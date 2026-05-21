@@ -1,115 +1,57 @@
-class ChatConversationModel {
-  final String id;
-  final String? trainerUserId;
-  final String? memberUserId;
-  final String title;
-  final String lastMessage;
-  final String? avatarUrl;
-  final int unreadCount;
-  final DateTime? updatedAt;
-  final Map<String, dynamic> raw;
+import 'package:fitness/utils/image_url.dart';
 
-  const ChatConversationModel({
+class ChatParticipant {
+  final String id;
+  final String name;
+  final String? profileImageUrl;
+
+  const ChatParticipant({
     required this.id,
-    this.trainerUserId,
-    this.memberUserId,
-    required this.title,
-    required this.lastMessage,
-    this.avatarUrl,
-    this.unreadCount = 0,
-    this.updatedAt,
-    this.raw = const <String, dynamic>{},
+    required this.name,
+    this.profileImageUrl,
   });
 
-  factory ChatConversationModel.fromJson(Map<String, dynamic> json) {
-    final data = _object(json['data']) ?? json;
-    final trainer = _object(data['trainer']) ?? _object(data['trainerUser']);
-    final member = _object(data['member']) ?? _object(data['memberUser']);
-    final otherUser =
-        _object(data['otherUser']) ??
-        _object(data['participant']) ??
-        _object(data['user']) ??
-        trainer ??
-        member;
-    final lastMessageMap =
-        _object(data['lastMessage']) ?? _object(data['last_message']);
-
-    final lastMessage =
-        _readString(lastMessageMap, const ['text', 'message', 'content']) ??
-        _readString(data, const ['lastMessage', 'last_message']) ??
-        _readString(data, const ['lastMessageText', 'last_message_text']) ??
-        '';
-
-    return ChatConversationModel(
-      id:
-          _readString(data, const [
-            'id',
-            'conversationId',
-            'conversation_id',
-          ]) ??
-          '',
-      trainerUserId:
-          _readString(data, const ['trainerUserId', 'trainer_user_id']) ??
-          _readString(trainer, const ['id', 'userId', 'user_id']),
-      memberUserId:
-          _readString(data, const ['memberUserId', 'member_user_id']) ??
-          _readString(member, const ['id', 'userId', 'user_id']),
-      title: _displayName(otherUser) ?? 'Conversation',
-      lastMessage: lastMessage,
-      avatarUrl:
-          _readString(otherUser, const [
-            'image',
-            'imageUrl',
-            'image_url',
-            'profileImage',
-            'profileImageUrl',
-            'profile_image',
-            'profile_image_url',
-            'avatar',
-          ]) ??
-          _readString(data, const ['avatarUrl', 'avatar_url']),
-      unreadCount:
-          _readInt(data, const [
-            'unreadCount',
-            'unread_count',
-            'unseenCount',
-          ]) ??
-          0,
-      updatedAt: _readDate(data, const [
-        'updatedAt',
-        'updated_at',
-        'lastMessageAt',
-        'last_message_at',
-        'createdAt',
-        'created_at',
-      ]),
-      raw: data,
+  factory ChatParticipant.fromJson(Map<String, dynamic> json) {
+    return ChatParticipant(
+      id: _readString(json, const ['id', 'userId', 'user_id']) ?? '',
+      name: _displayName(json) ?? 'User',
+      profileImageUrl: normalizeImageUrl(
+        _readString(json, const [
+          'profileImageUrl',
+          'profile_image_url',
+          'imageUrl',
+          'image_url',
+          'avatar',
+          'avatarUrl',
+          'avatar_url',
+        ]),
+      ),
     );
   }
 }
 
 class ChatMessageModel {
   final String id;
-  final String? conversationId;
-  final String? senderUserId;
-  final String text;
+  final String conversationId;
+  final String senderUserId;
   final String messageType;
+  final String text;
   final String? attachmentUrl;
   final String? attachmentType;
+  final DateTime? seenAt;
   final DateTime? createdAt;
-  final bool? isMine;
   final Map<String, dynamic> raw;
 
   const ChatMessageModel({
     required this.id,
-    this.conversationId,
-    this.senderUserId,
+    required this.conversationId,
+    required this.senderUserId,
+    required this.messageType,
     required this.text,
-    this.messageType = 'TEXT',
     this.attachmentUrl,
     this.attachmentType,
+    this.seenAt,
     this.createdAt,
-    this.isMine,
     this.raw = const <String, dynamic>{},
   });
 
@@ -119,31 +61,118 @@ class ChatMessageModel {
 
     return ChatMessageModel(
       id: _readString(data, const ['id', 'messageId', 'message_id']) ?? '',
-      conversationId: _readString(data, const [
-        'conversationId',
-        'conversation_id',
-      ]),
+      conversationId:
+          _readString(data, const ['conversationId', 'conversation_id']) ?? '',
       senderUserId:
           _readString(data, const ['senderUserId', 'sender_user_id']) ??
-          _readString(sender, const ['id', 'userId', 'user_id']),
+          _readString(sender, const ['id', 'userId', 'user_id']) ??
+          '',
+      messageType:
+          (_readString(data, const ['messageType', 'message_type', 'type']) ??
+                  'TEXT')
+              .toUpperCase(),
       text:
           _readString(data, const ['text', 'message', 'content', 'body']) ?? '',
-      messageType:
-          _readString(data, const ['messageType', 'message_type', 'type']) ??
-          'TEXT',
-      attachmentUrl: _readString(data, const [
-        'attachmentUrl',
-        'attachment_url',
-      ]),
+      attachmentUrl: normalizeImageUrl(
+        _readString(data, const ['attachmentUrl', 'attachment_url']),
+      ),
       attachmentType: _readString(data, const [
         'attachmentType',
         'attachment_type',
       ]),
+      seenAt: _readDate(data, const ['seenAt', 'seen_at']),
       createdAt: _readDate(data, const ['createdAt', 'created_at', 'sentAt']),
-      isMine: _readBool(data, const ['isMine', 'isMe', 'mine']),
       raw: data,
     );
   }
+}
+
+class ChatConversationModel {
+  final String id;
+  final String memberUserId;
+  final String trainerUserId;
+  final String memberStatus;
+  final String trainerStatus;
+  final DateTime? lastMessageAt;
+  final ChatParticipant? member;
+  final ChatParticipant? trainer;
+  final ChatMessageModel? lastMessage;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final Map<String, dynamic> raw;
+
+  const ChatConversationModel({
+    required this.id,
+    required this.memberUserId,
+    required this.trainerUserId,
+    required this.memberStatus,
+    required this.trainerStatus,
+    this.lastMessageAt,
+    this.member,
+    this.trainer,
+    this.lastMessage,
+    this.createdAt,
+    this.updatedAt,
+    this.raw = const <String, dynamic>{},
+  });
+
+  factory ChatConversationModel.fromJson(Map<String, dynamic> json) {
+    final data = _object(json['data']) ?? json;
+    final member = _object(data['member']);
+    final trainer = _object(data['trainer']);
+    final lastMessage = _object(data['lastMessage'] ?? data['last_message']);
+
+    return ChatConversationModel(
+      id:
+          _readString(data, const [
+            'id',
+            'conversationId',
+            'conversation_id',
+          ]) ??
+          '',
+      memberUserId:
+          _readString(data, const ['memberUserId', 'member_user_id']) ??
+          _readString(member, const ['id', 'userId', 'user_id']) ??
+          '',
+      trainerUserId:
+          _readString(data, const ['trainerUserId', 'trainer_user_id']) ??
+          _readString(trainer, const ['id', 'userId', 'user_id']) ??
+          '',
+      memberStatus:
+          (_readString(data, const ['memberStatus', 'member_status']) ??
+                  'INACTIVE')
+              .toUpperCase(),
+      trainerStatus:
+          (_readString(data, const ['trainerStatus', 'trainer_status']) ??
+                  'INACTIVE')
+              .toUpperCase(),
+      lastMessageAt: _readDate(data, const [
+        'lastMessageAt',
+        'last_message_at',
+      ]),
+      member: member == null ? null : ChatParticipant.fromJson(member),
+      trainer: trainer == null ? null : ChatParticipant.fromJson(trainer),
+      lastMessage: lastMessage == null
+          ? null
+          : ChatMessageModel.fromJson(lastMessage),
+      createdAt: _readDate(data, const ['createdAt', 'created_at']),
+      updatedAt: _readDate(data, const ['updatedAt', 'updated_at']),
+      raw: data,
+    );
+  }
+
+  String get title => trainer?.name ?? 'Trainer';
+
+  String? get avatarUrl => trainer?.profileImageUrl;
+
+  String get lastMessagePreview {
+    final message = lastMessage;
+    if (message == null) return 'No messages yet';
+    if (message.messageType == 'IMAGE') return 'Photo';
+    return message.text.isEmpty ? 'Message' : message.text;
+  }
+
+  DateTime? get sortDate => lastMessageAt ?? updatedAt ?? createdAt;
 }
 
 List<Map<String, dynamic>> readListPayload(
@@ -156,19 +185,27 @@ List<Map<String, dynamic>> readListPayload(
 
   if (response is Map) {
     final map = _stringMap(response);
+    final data = map['data'];
+
+    if (data is List) {
+      return data.whereType<Map>().map(_stringMap).toList();
+    }
+    if (data is Map) {
+      final dataMap = _stringMap(data);
+      for (final key in keys) {
+        final value = dataMap[key];
+        if (value is List) {
+          return value.whereType<Map>().map(_stringMap).toList();
+        }
+      }
+      return readListPayload(dataMap, keys);
+    }
+
     for (final key in keys) {
       final value = map[key];
       if (value is List) {
         return value.whereType<Map>().map(_stringMap).toList();
       }
-    }
-
-    final data = map['data'];
-    if (data is List) {
-      return data.whereType<Map>().map(_stringMap).toList();
-    }
-    if (data is Map) {
-      return readListPayload(data, keys);
     }
   }
 
@@ -227,29 +264,10 @@ String? _readString(Map<String, dynamic>? json, List<String> keys) {
   for (final key in keys) {
     final value = json[key];
     if (value == null) continue;
+    if (value is Map || value is Iterable) continue;
 
     final text = value.toString().trim();
     if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
-  }
-
-  return null;
-}
-
-int? _readInt(Map<String, dynamic> json, List<String> keys) {
-  final value = _readString(json, keys);
-  if (value == null) return null;
-  return int.tryParse(value) ?? double.tryParse(value)?.round();
-}
-
-bool? _readBool(Map<String, dynamic> json, List<String> keys) {
-  for (final key in keys) {
-    final value = json[key];
-    if (value is bool) return value;
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-      if (normalized == 'true') return true;
-      if (normalized == 'false') return false;
-    }
   }
 
   return null;

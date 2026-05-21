@@ -1,3 +1,4 @@
+import 'package:fitness/controllers/common/chat_controller.dart';
 import 'package:fitness/controllers/member/trainer_bookmark_controller.dart';
 import 'package:fitness/controllers/member/trainer_details_controller.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
@@ -8,7 +9,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import '../../../../Helpers/route.dart';
-import 'trainer_chat_screen.dart';
+import '../../common/chat/chat_screen.dart';
 import 'widgets/review_card.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -192,8 +193,26 @@ class TrainerDetailsScreen extends StatelessWidget {
     });
   }
 
-  void _startTrainerChat() {
-    Get.to(() => const TrainerChatScreen());
+  Future<void> _startTrainerChat() async {
+    final trainer = controller.trainer.value ?? const <String, dynamic>{};
+    final trainerUserId =
+        (trainer['trainerUserId']?.toString() ?? trainer['id']?.toString() ?? '')
+            .trim();
+    final trainerName = trainer['name']?.toString();
+    final avatarUrl = trainer['imageUrl']?.toString();
+
+    final chatController = Get.isRegistered<ChatController>()
+        ? Get.find<ChatController>()
+        : Get.put(ChatController());
+    final contact = await chatController.startConversationWithTrainer(
+      trainerUserId: trainerUserId,
+      trainerName: trainerName,
+      avatarUrl: avatarUrl,
+    );
+
+    if (contact != null) {
+      Get.to(() => ChatScreen(contact: contact));
+    }
   }
 
   String _heroPriceRange(Object? value) {

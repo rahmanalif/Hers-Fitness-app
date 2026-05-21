@@ -1,21 +1,51 @@
+import 'package:fitness/controllers/common/chat_controller.dart';
+import 'package:fitness/utils/AppColor/app_colors.dart';
+import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
+import 'package:fitness/views/Base/CustomTextfield/CustomTextfield.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import '../../../../utils/AppColor/app_colors.dart';
-import '../../../../utils/AppTextStyle/app_text_styles.dart';
-import '../../../../controllers/common/chat_controller.dart';
-import '../../../Base/CustomTextfield/CustomTextfield.dart';
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   final ChatContact contact;
+
   const ChatScreen({super.key, required this.contact});
 
   @override
-  Widget build(BuildContext context) {
-    final ChatController controller = Get.isRegistered<ChatController>()
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  late final ChatController controller;
+  late final Worker _messagesWorker;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.isRegistered<ChatController>()
         ? Get.find<ChatController>()
         : Get.put(ChatController());
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.openConversation(widget.contact);
+    });
+    _messagesWorker = ever<List<ChatMessage>>(
+      controller.messages,
+      (_) => _scrollToBottomIfNeeded(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _messagesWorker.dispose();
+    _scrollController.dispose();
+    controller.closeActiveConversation();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -23,53 +53,9 @@ class ChatScreen extends StatelessWidget {
           _buildTopGradient(context),
           Column(
             children: [
-              _buildAppBar(controller),
-              Expanded(
-                child: Obx(() {
-                  if (controller.isLoadingMessages.value &&
-                      controller.messages.isEmpty) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.actionPrimary,
-                      ),
-                    );
-                  }
-
-                  if (controller.messages.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No messages yet.',
-                        style: AppTextStyles.sm14Medium.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.w,
-                      vertical: 24.h,
-                    ),
-                    itemCount: controller.messages.length,
-                    itemBuilder: (context, index) {
-                      final message = controller.messages[index];
-                      bool showTimeDivider =
-                          index == 0 ||
-                          controller.messages[index].time !=
-                              controller.messages[index - 1].time;
-
-                      return Column(
-                        children: [
-                          if (showTimeDivider) _buildTimeDivider(message.time),
-                          _buildMessageBubble(message),
-                        ],
-                      );
-                    },
-                  );
-                }),
-              ),
-              _buildMessageInput(controller),
+              _buildAppBar(),
+              Expanded(child: _buildBody()),
+              _buildMessageInput(),
             ],
           ),
         ],
@@ -84,71 +70,30 @@ class ChatScreen extends StatelessWidget {
       right: 0,
       height: MediaQuery.of(context).padding.top + 180.h,
       child: IgnorePointer(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFFFFDADF).withValues(alpha: 0.9),
-                    const Color(0xFFFFECEE).withValues(alpha: 0.8),
-                    const Color(0xFFFFF7F5).withValues(alpha: 0.58),
-                    Colors.white.withValues(alpha: 0),
-                  ],
-                  stops: const [0, 0.46, 0.78, 1],
-                ),
-              ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFFFDADF).withValues(alpha: 0.9),
+                const Color(0xFFFFECEE).withValues(alpha: 0.8),
+                const Color(0xFFFFF7F5).withValues(alpha: 0.58),
+                Colors.white.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.46, 0.78, 1],
             ),
-            Positioned(
-              left: -78.w,
-              top: -38.h,
-              width: 220.w,
-              height: 220.w,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFFFBECB).withValues(alpha: 0.5),
-                      const Color(0xFFFFDDE4).withValues(alpha: 0.26),
-                      Colors.white.withValues(alpha: 0),
-                    ],
-                    stops: const [0, 0.48, 1],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: -76.w,
-              top: -26.h,
-              width: 230.w,
-              height: 230.w,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFFFC1CF).withValues(alpha: 0.45),
-                      const Color(0xFFFFE1E7).withValues(alpha: 0.22),
-                      Colors.white.withValues(alpha: 0),
-                    ],
-                    stops: const [0, 0.5, 1],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAppBar(ChatController controller) {
+  Widget _buildAppBar() {
     return Container(
       padding: EdgeInsets.only(
         top: 60.h,
-        bottom: 20.h,
+        bottom: 16.h,
         left: 20.w,
         right: 20.w,
       ),
@@ -171,37 +116,114 @@ class ChatScreen extends StatelessWidget {
             ),
           ),
           SizedBox(width: 16.w),
-          _buildAvatar(contact.avatarUrl, 40.w),
+          Obx(() {
+            final selected = controller.selectedContact.value ?? widget.contact;
+            return _buildAvatar(
+              selected.avatarUrl,
+              42.w,
+              selected.isTrainerActive,
+            );
+          }),
           SizedBox(width: 12.w),
           Expanded(
             child: Obx(() {
-              final selected = controller.selectedContact.value;
-              return Text(
-                selected?.name ?? contact.name,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.base16Medium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
+              final selected = controller.selectedContact.value ?? widget.contact;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    selected.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.base16Medium.copyWith(
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  SizedBox(height: 3.h),
+                  Text(
+                    controller.isTrainerTyping.value
+                        ? 'Typing...'
+                        : selected.isTrainerActive
+                            ? 'Active now'
+                            : 'Offline',
+                    style: AppTextStyles.xs12Regular.copyWith(
+                      color: selected.isTrainerActive || controller.isTrainerTyping.value
+                          ? Colors.green
+                          : AppColors.textTertiary,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
               );
             }),
-          ),
-          Container(
-            width: 40.w,
-            height: 40.w,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.info_outline, size: 24.sp, color: Colors.black),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildBody() {
+    return Obx(() {
+      if (controller.isLoadingMessages.value && controller.messages.isEmpty) {
+        return Center(
+          child: CircularProgressIndicator(color: AppColors.actionPrimary),
+        );
+      }
+
+      if (controller.messagesError.value.isNotEmpty &&
+          controller.messages.isEmpty) {
+        return _ErrorState(
+          message: controller.messagesError.value,
+          onRetry: () => controller.fetchMessages(
+            widget.contact.id,
+            showError: true,
+          ),
+        );
+      }
+
+      if (controller.messages.isEmpty) {
+        return Center(
+          child: Text(
+            'No messages yet.',
+            style: AppTextStyles.sm14Medium.copyWith(
+              color: AppColors.textSecondary,
+              letterSpacing: 0,
+            ),
+          ),
+        );
+      }
+
+      return ListView.builder(
+        controller: _scrollController,
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
+        itemCount:
+            controller.messages.length + (controller.isTrainerTyping.value ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == controller.messages.length) {
+            return _TypingIndicator(avatarUrl: widget.contact.avatarUrl);
+          }
+
+          final message = controller.messages[index];
+          final showTimeDivider =
+              index == 0 ||
+              controller.messages[index].time !=
+                  controller.messages[index - 1].time;
+
+          return Column(
+            children: [
+              if (showTimeDivider) _buildTimeDivider(message.time),
+              _buildMessageBubble(message),
+            ],
+          );
+        },
+      );
+    });
+  }
+
   Widget _buildTimeDivider(String time) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 24.h),
+      padding: EdgeInsets.symmetric(vertical: 18.h),
       child: Row(
         children: [
           Expanded(child: Divider(color: AppColors.borderPrimary)),
@@ -209,8 +231,9 @@ class ChatScreen extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: Text(
               time,
-              style: AppTextStyles.sm14Regular.copyWith(
+              style: AppTextStyles.xs12Regular.copyWith(
                 color: AppColors.textSecondary,
+                letterSpacing: 0,
               ),
             ),
           ),
@@ -222,62 +245,81 @@ class ChatScreen extends StatelessWidget {
 
   Widget _buildMessageBubble(ChatMessage message) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.only(bottom: 14.h),
       child: Row(
-        mainAxisAlignment: message.isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            message.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!message.isMe) ...[
-            Container(
-              width: 32.w,
-              height: 32.w,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.person, color: Colors.grey[400], size: 20.sp),
-            ),
+            _buildAvatar(widget.contact.avatarUrl, 30.w, false),
             SizedBox(width: 8.w),
           ],
           Flexible(
-            child: Container(
-              padding: EdgeInsets.all(16.r),
-              decoration: BoxDecoration(
-                color: message.isMe ? Colors.black : const Color(0xFFEBEBEB),
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              child: Text(
-                message.text,
-                style: AppTextStyles.sm14Medium.copyWith(
-                  color: message.isMe ? Colors.white : AppColors.textPrimary,
+            child: Column(
+              crossAxisAlignment: message.isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(14.r),
+                  decoration: BoxDecoration(
+                    color:
+                        message.isMe ? Colors.black : const Color(0xFFEBEBEB),
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  child: message.messageType == 'IMAGE' &&
+                          message.attachmentUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8.r),
+                          child: Image.network(
+                            message.attachmentUrl!,
+                            width: 190.w,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Text(
+                          message.text,
+                          style: AppTextStyles.sm14Medium.copyWith(
+                            color: message.isMe
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                            letterSpacing: 0,
+                          ),
+                        ),
                 ),
-              ),
+                if (message.isMe)
+                  Padding(
+                    padding: EdgeInsets.only(top: 4.h, right: 4.w),
+                    child: Text(
+                      message.isFailed
+                          ? 'Failed'
+                          : message.isPending
+                              ? 'Sending...'
+                              : message.seenAt != null
+                                  ? 'Seen'
+                                  : 'Sent',
+                      style: AppTextStyles.xxs9Regular.copyWith(
+                        color: message.isFailed
+                            ? AppColors.statusError
+                            : AppColors.textTertiary,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (message.isMe) ...[
-            SizedBox(width: 8.w),
-            Container(
-              width: 32.w,
-              height: 32.w,
-              decoration: const BoxDecoration(
-                color: AppColors.actionPrimary,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.person, color: Colors.white, size: 20.sp),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildMessageInput(ChatController controller) {
+  Widget _buildMessageInput() {
     return Container(
       padding: EdgeInsets.only(
-        top: 16.h,
-        bottom: 40.h,
+        top: 14.h,
+        bottom: MediaQuery.of(context).padding.bottom + 14.h,
         left: 20.w,
         right: 20.w,
       ),
@@ -296,34 +338,30 @@ class ChatScreen extends StatelessWidget {
           Expanded(
             child: CustomTextField(
               controller: controller.messageController,
-              hintText: "Type a message...",
-              suffixIcon: Icon(
-                Icons.camera_alt_outlined,
-                color: AppColors.textSecondary,
-                size: 24.sp,
-              ),
+              hintText: 'Type a message...',
               filColor: Colors.white,
               borderColor: AppColors.borderSecondary,
+              maxLines: 3,
+              onSubmitted: (_) => controller.sendMessage(),
             ),
           ),
           SizedBox(width: 12.w),
-          Obx(
-            () => GestureDetector(
-              onTap: controller.isSending.value
-                  ? null
-                  : () => controller.sendMessage(),
+          Obx(() {
+            final enabled = controller.canSend;
+            return GestureDetector(
+              onTap: enabled ? () => controller.sendMessage() : null,
               child: Container(
-                width: 56.w,
-                height: 56.w,
+                width: 54.w,
+                height: 54.w,
                 decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(16.r),
+                  color: enabled ? Colors.black : AppColors.borderPrimary,
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Center(
                   child: controller.isSending.value
                       ? SizedBox(
-                          width: 20.w,
-                          height: 20.w,
+                          width: 18.w,
+                          height: 18.w,
                           child: const CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2,
@@ -334,32 +372,51 @@ class ChatScreen extends StatelessWidget {
                           child: Icon(
                             Icons.send_outlined,
                             color: Colors.white,
-                            size: 24.sp,
+                            size: 22.sp,
                           ),
                         ),
                 ),
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildAvatar(String? avatarUrl, double size) {
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          avatarUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _avatarFallback(size),
-        ),
-      );
-    }
+  Widget _buildAvatar(String? avatarUrl, double size, bool isActive) {
+    final avatar = avatarUrl != null && avatarUrl.isNotEmpty
+        ? ClipOval(
+            child: Image.network(
+              avatarUrl,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _avatarFallback(size),
+            ),
+          )
+        : _avatarFallback(size);
 
-    return _avatarFallback(size);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        avatar,
+        if (isActive)
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 11.w,
+              height: 11.w,
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2.w),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _avatarFallback(double size) {
@@ -370,7 +427,94 @@ class ChatScreen extends StatelessWidget {
         color: Colors.grey[300],
         shape: BoxShape.circle,
       ),
-      child: Icon(Icons.person, color: Colors.grey[600], size: 24.sp),
+      child: Icon(Icons.person, color: Colors.grey[600], size: 20.sp),
+    );
+  }
+
+  void _scrollToBottomIfNeeded() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      final distanceFromBottom = position.maxScrollExtent - position.pixels;
+      if (distanceFromBottom > 180 && controller.messages.length > 1) return;
+
+      _scrollController.animateTo(
+        position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  final String? avatarUrl;
+
+  const _TypingIndicator({this.avatarUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 14.h),
+      child: Row(
+        children: [
+          Container(
+            width: 30.w,
+            height: 30.w,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.person, color: Colors.grey[600], size: 20.sp),
+          ),
+          SizedBox(width: 8.w),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEBEBEB),
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+            child: Text(
+              'Typing...',
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textSecondary,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textSecondary,
+                letterSpacing: 0,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            TextButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ),
+      ),
     );
   }
 }

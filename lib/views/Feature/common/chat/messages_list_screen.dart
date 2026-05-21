@@ -181,41 +181,78 @@ class MessagesListScreen extends StatelessWidget {
   Widget _buildContactItem(ChatContact contact, ChatController controller) {
     return GestureDetector(
       onTap: () {
-        controller.openConversation(contact);
         Get.to(() => ChatScreen(contact: contact));
       },
       child: Container(
-        margin: EdgeInsets.only(bottom: 12.h),
+        margin: EdgeInsets.only(bottom: 10.h),
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         decoration: BoxDecoration(
-          color: const Color(0xFFDEDEDE),
-          borderRadius: BorderRadius.circular(20.r),
+          color: AppColors.bgTertiary,
+          borderRadius: BorderRadius.circular(12.r),
         ),
         child: Row(
           children: [
-            _buildAvatar(contact.avatarUrl, 50.w),
+            _buildAvatar(contact.avatarUrl, 50.w, contact.isTrainerActive),
             SizedBox(width: 16.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    contact.name,
-                    style: AppTextStyles.base16Medium.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          contact.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.base16Medium.copyWith(
+                            color: AppColors.textPrimary,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        _formatContactTime(contact.updatedAt),
+                        style: AppTextStyles.xxs9Regular.copyWith(
+                          color: AppColors.textTertiary,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: 4.h),
-                  Text(
-                    contact.lastMessage,
-                    style: AppTextStyles.sm14Regular.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                  Row(
+                    children: [
+                      if (contact.isTrainerActive) ...[
+                        Container(
+                          width: 7.w,
+                          height: 7.w,
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        SizedBox(width: 6.w),
+                      ],
+                      Expanded(
+                        child: Text(
+                          contact.lastMessage,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.sm14Regular.copyWith(
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            if (contact.unreadCount > 0)
+            if (contact.unreadCount > 0) ...[
+              SizedBox(width: 10.w),
               Container(
                 width: 24.w,
                 height: 24.w,
@@ -232,27 +269,47 @@ class MessagesListScreen extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAvatar(String? avatarUrl, double size) {
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(16.r),
-        child: Image.network(
-          avatarUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _avatarFallback(size),
-        ),
-      );
-    }
+  Widget _buildAvatar(String? avatarUrl, double size, bool isActive) {
+    final avatar = avatarUrl != null && avatarUrl.isNotEmpty
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(12.r),
+            child: Image.network(
+              avatarUrl,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _avatarFallback(size),
+            ),
+          )
+        : _avatarFallback(size);
 
-    return _avatarFallback(size);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        avatar,
+        if (isActive)
+          Positioned(
+            right: -1.w,
+            bottom: -1.w,
+            child: Container(
+              width: 13.w,
+              height: 13.w,
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2.w),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _avatarFallback(double size) {
@@ -261,9 +318,25 @@ class MessagesListScreen extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Icon(Icons.person, color: Colors.grey[600]),
     );
   }
+}
+
+String _formatContactTime(DateTime? value) {
+  if (value == null) return '';
+  final local = value.toLocal();
+  final now = DateTime.now();
+  final sameDay =
+      local.year == now.year && local.month == now.month && local.day == now.day;
+  if (sameDay) {
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
+  }
+
+  return '${local.month}/${local.day}/${local.year.toString().substring(2)}';
 }
