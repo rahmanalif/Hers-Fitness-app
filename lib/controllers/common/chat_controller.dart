@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/models/chat_models.dart';
@@ -8,6 +9,7 @@ import 'package:fitness/services/user_service.dart';
 import 'package:fitness/utils/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 class ChatMessage {
@@ -95,56 +97,78 @@ class ChatMessage {
 
 class ChatContact {
   final String id;
+  final String? memberUserId;
   final String? trainerUserId;
+  final String? participantUserId;
   final String name;
   final String lastMessage;
   final String? avatarUrl;
   final int unreadCount;
   final DateTime? updatedAt;
-  final bool isTrainerActive;
+  final bool isParticipantActive;
 
   const ChatContact({
     required this.id,
+    this.memberUserId,
     this.trainerUserId,
+    this.participantUserId,
     required this.name,
     required this.lastMessage,
     this.avatarUrl,
     this.unreadCount = 0,
     this.updatedAt,
-    this.isTrainerActive = false,
+    this.isParticipantActive = false,
   });
 
-  factory ChatContact.fromModel(ChatConversationModel model) {
+  factory ChatContact.fromModel(
+    ChatConversationModel model, {
+    required String? currentUserId,
+  }) {
+    final isTrainer = currentUserId != null &&
+        currentUserId.isNotEmpty &&
+        currentUserId == model.trainerUserId;
+    final participant = isTrainer ? model.member : model.trainer;
+    final participantUserId =
+        isTrainer ? model.memberUserId : model.trainerUserId;
+    final participantStatus =
+        isTrainer ? model.memberStatus : model.trainerStatus;
+
     return ChatContact(
       id: model.id,
+      memberUserId: model.memberUserId,
       trainerUserId: model.trainerUserId,
-      name: model.title,
+      participantUserId: participantUserId,
+      name: participant?.name ?? (isTrainer ? 'Member' : 'Trainer'),
       lastMessage: model.lastMessagePreview,
-      avatarUrl: model.avatarUrl,
+      avatarUrl: participant?.profileImageUrl,
       updatedAt: model.sortDate,
-      isTrainerActive: model.trainerStatus == 'ACTIVE',
+      isParticipantActive: participantStatus == 'ACTIVE',
     );
   }
 
   ChatContact copyWith({
     String? id,
+    String? memberUserId,
     String? trainerUserId,
+    String? participantUserId,
     String? name,
     String? lastMessage,
     String? avatarUrl,
     int? unreadCount,
     DateTime? updatedAt,
-    bool? isTrainerActive,
+    bool? isParticipantActive,
   }) {
     return ChatContact(
       id: id ?? this.id,
+      memberUserId: memberUserId ?? this.memberUserId,
       trainerUserId: trainerUserId ?? this.trainerUserId,
+      participantUserId: participantUserId ?? this.participantUserId,
       name: name ?? this.name,
       lastMessage: lastMessage ?? this.lastMessage,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       unreadCount: unreadCount ?? this.unreadCount,
       updatedAt: updatedAt ?? this.updatedAt,
-      isTrainerActive: isTrainerActive ?? this.isTrainerActive,
+      isParticipantActive: isParticipantActive ?? this.isParticipantActive,
     );
   }
 }
@@ -168,8 +192,9 @@ class ChatController extends GetxController {
   final isLoadingConversations = false.obs;
   final isLoadingMessages = false.obs;
   final isSending = false.obs;
+  final isSendingImage = false.obs;
   final isStartingConversation = false.obs;
-  final isTrainerTyping = false.obs;
+  final isParticipantTyping = false.obs;
   final isSocketConnected = false.obs;
   final messagesError = ''.obs;
   final conversationsError = ''.obs;
@@ -181,6 +206,7 @@ class ChatController extends GetxController {
 
   final List<StreamSubscription<Map<String, dynamic>>> _subscriptions = [];
   final Map<String, Timer> _pendingFallbackTimers = {};
+  Timer? _participantTypingTimer;
   Timer? _typingStopTimer;
   String? _currentUserId;
   String? _joinedConversationId;
@@ -206,6 +232,8 @@ class ChatController extends GetxController {
   bool get canSend =>
       composerText.value.trim().isNotEmpty && !isSending.value;
 
+  bool get canPickImage => !isSendingImage.value;
+
   @override
   void onInit() {
     super.onInit();
@@ -224,7 +252,14 @@ class ChatController extends GetxController {
       await _loadCurrentUserId();
 
       final response = await _chatService.getConversations();
-      contacts.assignAll(response.map(ChatContact.fromModel));
+      contacts.assignAll(
+        response.map(
+          (conversation) => ChatContact.fromModel(
+            conversation,
+            currentUserId: _currentUserId,
+          ),
+        ),
+      );
       _refreshSelectedContact();
     } on ApiException catch (error) {
       conversationsError.value = error.message;
@@ -251,8 +286,9 @@ class ChatController extends GetxController {
       _socketService.leave(conversationId);
     }
     _joinedConversationId = null;
-    isTrainerTyping.value = false;
+    isParticipantTyping.value = false;
     _typingStopTimer?.cancel();
+    _participantTypingTimer?.cancel();
   }
 
   Future<ChatContact?> startConversationWithTrainer({
@@ -267,10 +303,14 @@ class ChatController extends GetxController {
 
     try {
       isStartingConversation.value = true;
+      await _loadCurrentUserId();
       final conversation = await _chatService.startConversation(
         trainerUserId: trainerUserId.trim(),
       );
-      var contact = ChatContact.fromModel(conversation);
+      var contact = ChatContact.fromModel(
+        conversation,
+        currentUserId: _currentUserId,
+      );
       if (contact.id.isEmpty) {
         throw const ApiException('Conversation id not found');
       }
@@ -308,7 +348,12 @@ class ChatController extends GetxController {
     try {
       final response = await _chatService.getConversations();
       ChatContact? contact;
-      for (final item in response.map(ChatContact.fromModel)) {
+      for (final item in response.map(
+        (conversation) => ChatContact.fromModel(
+          conversation,
+          currentUserId: _currentUserId,
+        ),
+      )) {
         if (item.trainerUserId == trainerUserId) {
           contact = item;
           break;
@@ -340,9 +385,11 @@ class ChatController extends GetxController {
       });
 
       messages.assignAll(
-        response.map(
-          (message) =>
-              ChatMessage.fromModel(message, currentUserId: _currentUserId),
+        _dedupeMessages(
+          response.map(
+            (message) =>
+                ChatMessage.fromModel(message, currentUserId: _currentUserId),
+          ),
         ),
       );
       markSeen(conversationId);
@@ -397,6 +444,86 @@ class ChatController extends GetxController {
     }
   }
 
+  Future<void> pickAndSendImage(ImageSource source) async {
+    final contact = selectedContact.value;
+    if (contact == null || contact.id.isEmpty || isSendingImage.value) return;
+
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 82,
+      );
+      if (picked == null) return;
+
+      isSendingImage.value = true;
+      final upload = await _uploadChatImage(File(picked.path));
+      await _sendImageMessage(
+        conversationId: contact.id,
+        attachmentUrl: upload.url,
+        attachmentType: upload.contentType,
+      );
+    } on ApiException catch (error) {
+      _showError('Image failed', error.message);
+    } catch (_) {
+      _showError('Image failed', 'Could not send the image.');
+    } finally {
+      isSendingImage.value = false;
+    }
+  }
+
+  Future<_ChatImageUploadResult> _uploadChatImage(File file) async {
+    // TODO: Wire this to the app's shared media upload endpoint when it is
+    // available. Chat image sending is intentionally isolated here so the UI
+    // and message flow are ready without introducing a role-specific API.
+    throw const ApiException('Image upload API is not available yet.');
+  }
+
+  Future<void> _sendImageMessage({
+    required String conversationId,
+    required String attachmentUrl,
+    required String attachmentType,
+  }) async {
+    await _loadCurrentUserId();
+    final contact = selectedContact.value;
+    final now = DateTime.now();
+    final pendingId = 'local-${now.microsecondsSinceEpoch}';
+    final pending = ChatMessage(
+      id: pendingId,
+      conversationId: conversationId,
+      senderUserId: _currentUserId ?? '',
+      text: '',
+      isMe: true,
+      time: _formatMessageTime(now),
+      createdAt: now,
+      messageType: 'IMAGE',
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
+      isPending: true,
+    );
+
+    _addOrReplaceMessage(pending);
+    if (contact != null) {
+      _upsertContact(contact.copyWith(lastMessage: 'Photo', updatedAt: now));
+    }
+    _sendTyping(false);
+
+    final sentOverSocket = await _sendImageOverSocket(
+      conversationId: conversationId,
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
+      pendingId: pendingId,
+    );
+
+    if (!sentOverSocket) {
+      await _sendImageOverRest(
+        conversationId: conversationId,
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+        pendingId: pendingId,
+      );
+    }
+  }
+
   void markSeen(String conversationId) {
     if (conversationId.isEmpty) return;
     _socketService.emitSeen(conversationId);
@@ -422,10 +549,63 @@ class ChatController extends GetxController {
         (message) => message.id == pendingId && message.isPending,
       );
       if (stillPending) {
+        final pendingIndex = messages.indexWhere(
+          (message) => message.id == pendingId && message.isPending,
+        );
+        if (pendingIndex != -1 &&
+            _findDuplicateMessageIndex(messages[pendingIndex]) != -1) {
+          messages.removeAt(pendingIndex);
+          return;
+        }
+
         unawaited(
           _sendMessageOverRest(
             conversationId: conversationId,
             text: text,
+            pendingId: pendingId,
+          ),
+        );
+      }
+    });
+
+    return true;
+  }
+
+  Future<bool> _sendImageOverSocket({
+    required String conversationId,
+    required String attachmentUrl,
+    required String attachmentType,
+    required String pendingId,
+  }) async {
+    await _connectSocket();
+    final emitted = _socketService.sendImage(
+      conversationId: conversationId,
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
+    );
+
+    if (!emitted) return false;
+
+    _pendingFallbackTimers[pendingId]?.cancel();
+    _pendingFallbackTimers[pendingId] = Timer(const Duration(seconds: 6), () {
+      final stillPending = messages.any(
+        (message) => message.id == pendingId && message.isPending,
+      );
+      if (stillPending) {
+        final pendingIndex = messages.indexWhere(
+          (message) => message.id == pendingId && message.isPending,
+        );
+        if (pendingIndex != -1 &&
+            _findDuplicateMessageIndex(messages[pendingIndex]) != -1) {
+          messages.removeAt(pendingIndex);
+          return;
+        }
+
+        unawaited(
+          _sendImageOverRest(
+            conversationId: conversationId,
+            attachmentUrl: attachmentUrl,
+            attachmentType: attachmentType,
             pendingId: pendingId,
           ),
         );
@@ -459,6 +639,37 @@ class ChatController extends GetxController {
       _markPendingFailed(pendingId);
       messageController.text = text;
       _showError('Message failed', 'Could not send your message.');
+    } finally {
+      isSending.value = false;
+    }
+  }
+
+  Future<void> _sendImageOverRest({
+    required String conversationId,
+    required String attachmentUrl,
+    required String attachmentType,
+    required String pendingId,
+  }) async {
+    try {
+      isSending.value = true;
+      final response = await _chatService.sendMessage(
+        conversationId: conversationId,
+        text: '',
+        messageType: 'IMAGE',
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+      );
+      _pendingFallbackTimers.remove(pendingId)?.cancel();
+      _replacePendingMessage(
+        pendingId,
+        ChatMessage.fromModel(response, currentUserId: _currentUserId),
+      );
+    } on ApiException catch (error) {
+      _markPendingFailed(pendingId);
+      _showError('Image failed', error.message);
+    } catch (_) {
+      _markPendingFailed(pendingId);
+      _showError('Image failed', 'Could not send the image.');
     } finally {
       isSending.value = false;
     }
@@ -529,7 +740,14 @@ class ChatController extends GetxController {
     final senderUserId = payload['senderUserId']?.toString();
     if (senderUserId != null && senderUserId == _currentUserId) return;
 
-    isTrainerTyping.value = payload['isTyping'] == true;
+    final isTyping = payload['isTyping'] == true;
+    isParticipantTyping.value = isTyping;
+    _participantTypingTimer?.cancel();
+    if (isTyping) {
+      _participantTypingTimer = Timer(const Duration(seconds: 3), () {
+        isParticipantTyping.value = false;
+      });
+    }
   }
 
   void _handleSocketSeen(Map<String, dynamic> payload) {
@@ -549,31 +767,41 @@ class ChatController extends GetxController {
   }
 
   void _handleSocketStatus(Map<String, dynamic> payload) {
-    final trainerUserId =
-        payload['trainerUserId']?.toString() ?? payload['userId']?.toString();
-    final status = payload['trainerStatus']?.toString() ??
-        payload['status']?.toString();
-    if (trainerUserId == null || status == null) return;
+    final userId =
+        payload['userId']?.toString() ??
+        payload['trainerUserId']?.toString() ??
+        payload['memberUserId']?.toString();
+    final status =
+        payload['status']?.toString() ??
+        payload['trainerStatus']?.toString() ??
+        payload['memberStatus']?.toString();
+    if (userId == null || status == null) return;
 
     final active = status.toUpperCase() == 'ACTIVE';
     for (var index = 0; index < contacts.length; index++) {
       final contact = contacts[index];
-      if (contact.trainerUserId == trainerUserId) {
-        contacts[index] = contact.copyWith(isTrainerActive: active);
+      if (contact.participantUserId == userId ||
+          contact.trainerUserId == userId ||
+          contact.memberUserId == userId) {
+        contacts[index] = contact.copyWith(isParticipantActive: active);
       }
     }
     _refreshSelectedContact();
   }
 
   void _handleSocketDisconnected(Map<String, dynamic> payload) {
-    final trainerUserId =
-        payload['trainerUserId']?.toString() ?? payload['userId']?.toString();
-    if (trainerUserId == null) return;
+    final userId =
+        payload['userId']?.toString() ??
+        payload['trainerUserId']?.toString() ??
+        payload['memberUserId']?.toString();
+    if (userId == null) return;
 
     for (var index = 0; index < contacts.length; index++) {
       final contact = contacts[index];
-      if (contact.trainerUserId == trainerUserId) {
-        contacts[index] = contact.copyWith(isTrainerActive: false);
+      if (contact.participantUserId == userId ||
+          contact.trainerUserId == userId ||
+          contact.memberUserId == userId) {
+        contacts[index] = contact.copyWith(isParticipantActive: false);
       }
     }
     _refreshSelectedContact();
@@ -607,8 +835,8 @@ class ChatController extends GetxController {
 
       final pendingIndex = messages.indexWhere((item) {
         return item.isPending &&
-            item.isMe == message.isMe &&
             item.text == message.text &&
+            item.messageType == message.messageType &&
             item.conversationId == message.conversationId;
       });
       if (pendingIndex != -1) {
@@ -616,14 +844,102 @@ class ChatController extends GetxController {
         messages[pendingIndex] = message;
         return;
       }
+
+      final duplicateIndex = _findDuplicateMessageIndex(message);
+      if (duplicateIndex != -1) {
+        messages[duplicateIndex] = _mergeDuplicateMessage(
+          messages[duplicateIndex],
+          message,
+        );
+        return;
+      }
     }
 
     messages.add(message);
-    messages.sort((a, b) {
-      final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return aDate.compareTo(bDate);
+    _sortMessages();
+  }
+
+  List<ChatMessage> _dedupeMessages(Iterable<ChatMessage> source) {
+    final unique = <ChatMessage>[];
+    for (final message in source) {
+      final idIndex = unique.indexWhere(
+        (item) => item.id.isNotEmpty && item.id == message.id,
+      );
+      if (idIndex != -1) {
+        unique[idIndex] = _mergeDuplicateMessage(unique[idIndex], message);
+        continue;
+      }
+
+      final duplicateIndex = unique.indexWhere(
+        (item) => _isLikelyDuplicateMessage(item, message),
+      );
+      if (duplicateIndex != -1) {
+        unique[duplicateIndex] = _mergeDuplicateMessage(
+          unique[duplicateIndex],
+          message,
+        );
+        continue;
+      }
+
+      unique.add(message);
+    }
+
+    unique.sort(_compareMessages);
+    return unique;
+  }
+
+  int _findDuplicateMessageIndex(ChatMessage message) {
+    return messages.indexWhere((item) {
+      if (item.id.isNotEmpty &&
+          message.id.isNotEmpty &&
+          item.id == message.id) {
+        return false;
+      }
+      return _isLikelyDuplicateMessage(item, message);
     });
+  }
+
+  bool _isLikelyDuplicateMessage(ChatMessage a, ChatMessage b) {
+    if (a.conversationId != b.conversationId) return false;
+    if (a.messageType != b.messageType) return false;
+    if (a.text.trim() != b.text.trim()) return false;
+    if ((a.attachmentUrl ?? '') != (b.attachmentUrl ?? '')) return false;
+    if ((a.attachmentType ?? '') != (b.attachmentType ?? '')) return false;
+
+    final sameSender = a.senderUserId.isNotEmpty && b.senderUserId.isNotEmpty
+        ? a.senderUserId == b.senderUserId
+        : a.isMe == b.isMe;
+    if (!sameSender) return false;
+
+    final aDate = a.createdAt;
+    final bDate = b.createdAt;
+    if (aDate == null || bDate == null) return a.time == b.time;
+
+    return aDate.difference(bDate).abs() <= const Duration(seconds: 12);
+  }
+
+  ChatMessage _mergeDuplicateMessage(ChatMessage current, ChatMessage incoming) {
+    if (current.isPending && !incoming.isPending) return incoming;
+    if (current.isFailed && !incoming.isFailed) return incoming;
+    if (current.id.startsWith('local-') && !incoming.id.startsWith('local-')) {
+      return incoming;
+    }
+    if (current.seenAt == null && incoming.seenAt != null) {
+      return current.copyWith(seenAt: incoming.seenAt);
+    }
+    return current;
+  }
+
+  void _sortMessages() {
+    messages.sort((a, b) {
+      return _compareMessages(a, b);
+    });
+  }
+
+  int _compareMessages(ChatMessage a, ChatMessage b) {
+    final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return aDate.compareTo(bDate);
   }
 
   void _replacePendingMessage(String pendingId, ChatMessage replacement) {
@@ -699,6 +1015,7 @@ class ChatController extends GetxController {
       subscription.cancel();
     }
     _typingStopTimer?.cancel();
+    _participantTypingTimer?.cancel();
     unawaited(_socketService.dispose());
     messageController.dispose();
     searchController.dispose();
@@ -709,4 +1026,14 @@ class ChatController extends GetxController {
 String _formatMessageTime(DateTime? value) {
   if (value == null) return 'Now';
   return DateFormat('hh:mm a').format(value.toLocal());
+}
+
+class _ChatImageUploadResult {
+  final String url;
+  final String contentType;
+
+  const _ChatImageUploadResult({
+    required this.url,
+    required this.contentType,
+  });
 }

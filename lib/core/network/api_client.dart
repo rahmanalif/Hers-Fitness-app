@@ -206,18 +206,40 @@ class ApiClient {
     final request = response.request;
     final method = request?.method ?? 'HTTP';
     final url = request?.url.toString() ?? 'unknown-url';
-    final body = response.body.isEmpty ? '<empty>' : response.body;
+    final body = response.body.isEmpty
+        ? '<empty>'
+        : _prettyPrintJson(response.body);
 
     debugPrint('API $method $url');
     debugPrint('Status: ${response.statusCode}');
     debugPrint('Response payload:');
+    _debugPrintMultiline(body);
+  }
 
+  String _prettyPrintJson(String body) {
+    try {
+      const encoder = JsonEncoder.withIndent('  ');
+      return encoder.convert(jsonDecode(body));
+    } on FormatException {
+      return body;
+    }
+  }
+
+  void _debugPrintMultiline(String message) {
     const chunkSize = 800;
-    for (var index = 0; index < body.length; index += chunkSize) {
-      final end = (index + chunkSize < body.length)
-          ? index + chunkSize
-          : body.length;
-      debugPrint(body.substring(index, end));
+
+    for (final line in message.split('\n')) {
+      if (line.length <= chunkSize) {
+        debugPrint(line);
+        continue;
+      }
+
+      for (var index = 0; index < line.length; index += chunkSize) {
+        final end = (index + chunkSize < line.length)
+            ? index + chunkSize
+            : line.length;
+        debugPrint(line.substring(index, end));
+      }
     }
   }
 

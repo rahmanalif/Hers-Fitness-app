@@ -192,7 +192,11 @@ class MessagesListScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _buildAvatar(contact.avatarUrl, 50.w, contact.isTrainerActive),
+            _buildAvatar(
+              contact.avatarUrl,
+              50.w,
+              contact.isParticipantActive,
+            ),
             SizedBox(width: 16.w),
             Expanded(
               child: Column(
@@ -224,7 +228,7 @@ class MessagesListScreen extends StatelessWidget {
                   SizedBox(height: 4.h),
                   Row(
                     children: [
-                      if (contact.isTrainerActive) ...[
+                      if (contact.isParticipantActive) ...[
                         Container(
                           width: 7.w,
                           height: 7.w,

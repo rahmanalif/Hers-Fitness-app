@@ -147,11 +147,12 @@ Member home trainer tabs:
 | List messages | `GET /api/chat/conversations/{conversationId}/messages` | `ChatService.getMessages`, `ChatScreen` | Integrated |
 | Send message | `POST /api/chat/conversations/{conversationId}/messages` | `ChatService.sendMessage`, `ChatController.sendMessage` | Integrated |
 | Mark seen | `PATCH /api/chat/conversations/{conversationId}/seen` | `ChatService.markSeen` | Integrated |
+| Realtime chat socket | Socket.IO namespace `/chat` | `ChatSocketService`, `ChatController` | Integrated |
 
 Current chat logic follows the provided API: member-trainer conversation using `trainerUserId`.
+The same chat screens are used from both member and trainer bottom navigation. Contacts are mapped to the opposite participant, so members see trainers and trainers see members.
 
 Not integrated yet:
-- Real-time WebSocket/Socket.IO.
 - Attachment picker/upload UI.
 - Admin-only chat. This needs a different backend API, because the current API starts member-trainer conversations.
 

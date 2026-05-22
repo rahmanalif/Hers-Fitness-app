@@ -5,6 +5,7 @@ import 'package:fitness/views/Base/CustomTextfield/CustomTextfield.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatScreen extends StatefulWidget {
   final ChatContact contact;
@@ -121,7 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
             return _buildAvatar(
               selected.avatarUrl,
               42.w,
-              selected.isTrainerActive,
+              selected.isParticipantActive,
             );
           }),
           SizedBox(width: 12.w),
@@ -142,13 +143,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   SizedBox(height: 3.h),
                   Text(
-                    controller.isTrainerTyping.value
+                    controller.isParticipantTyping.value
                         ? 'Typing...'
-                        : selected.isTrainerActive
+                        : selected.isParticipantActive
                             ? 'Active now'
                             : 'Offline',
                     style: AppTextStyles.xs12Regular.copyWith(
-                      color: selected.isTrainerActive || controller.isTrainerTyping.value
+                      color: selected.isParticipantActive ||
+                              controller.isParticipantTyping.value
                           ? Colors.green
                           : AppColors.textTertiary,
                       letterSpacing: 0,
@@ -198,7 +200,8 @@ class _ChatScreenState extends State<ChatScreen> {
         controller: _scrollController,
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
         itemCount:
-            controller.messages.length + (controller.isTrainerTyping.value ? 1 : 0),
+            controller.messages.length +
+                (controller.isParticipantTyping.value ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == controller.messages.length) {
             return _TypingIndicator(avatarUrl: widget.contact.avatarUrl);
@@ -335,6 +338,40 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: Row(
         children: [
+          Obx(() {
+            final enabled = controller.canPickImage;
+            return GestureDetector(
+              onTap: enabled ? _showImageSourceSheet : null,
+              child: Container(
+                width: 46.w,
+                height: 54.w,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.borderSecondary),
+                ),
+                child: Center(
+                  child: controller.isSendingImage.value
+                      ? SizedBox(
+                          width: 18.w,
+                          height: 18.w,
+                          child: CircularProgressIndicator(
+                            color: AppColors.actionPrimary,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Icon(
+                          Icons.image_outlined,
+                          color: enabled
+                              ? AppColors.textPrimary
+                              : AppColors.textTertiary,
+                          size: 23.sp,
+                        ),
+                ),
+              ),
+            );
+          }),
+          SizedBox(width: 10.w),
           Expanded(
             child: CustomTextField(
               controller: controller.messageController,
@@ -381,6 +418,49 @@ class _ChatScreenState extends State<ChatScreen> {
           }),
         ],
       ),
+    );
+  }
+
+  void _showImageSourceSheet() {
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.fromLTRB(
+          20.w,
+          18.h,
+          20.w,
+          MediaQuery.of(context).padding.bottom + 18.h,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _ImageSourceButton(
+                icon: Icons.photo_camera_outlined,
+                label: 'Camera',
+                onTap: () {
+                  Get.back();
+                  controller.pickAndSendImage(ImageSource.camera);
+                },
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: _ImageSourceButton(
+                icon: Icons.photo_library_outlined,
+                label: 'Gallery',
+                onTap: () {
+                  Get.back();
+                  controller.pickAndSendImage(ImageSource.gallery);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: Colors.transparent,
     );
   }
 
@@ -444,6 +524,47 @@ class _ChatScreenState extends State<ChatScreen> {
         curve: Curves.easeOut,
       );
     });
+  }
+}
+
+class _ImageSourceButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ImageSourceButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56.h,
+        decoration: BoxDecoration(
+          color: AppColors.bgTertiary,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: AppColors.borderSecondary),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.textPrimary, size: 22.sp),
+            SizedBox(width: 8.w),
+            Text(
+              label,
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textPrimary,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
