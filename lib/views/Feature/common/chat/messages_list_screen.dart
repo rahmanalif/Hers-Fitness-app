@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import '../../../../core/storage/token_storage.dart';
+import '../../../../Helpers/route.dart';
 import '../../../../utils/AppColor/app_colors.dart';
 import '../../../../utils/AppTextStyle/app_text_styles.dart';
 import '../../../Base/CustomAppbar/custom_appbar.dart';
@@ -11,102 +13,121 @@ import 'chat_screen.dart';
 class MessagesListScreen extends StatelessWidget {
   const MessagesListScreen({super.key});
 
+  Future<void> _goHome() async {
+    final role = (await TokenStorage().getUserRole())?.toLowerCase();
+    if (role == 'trainer') {
+      Get.offAllNamed(AppRoutes.trainerBottomNavScreen);
+    } else {
+      Get.offAllNamed(AppRoutes.memberBottomNavScreen);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ChatController controller = Get.isRegistered<ChatController>()
         ? Get.find<ChatController>()
         : Get.put(ChatController());
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          _buildTopGradient(context),
-          SafeArea(
-            child: Column(
-              children: [
-                SizedBox(height: 16.h),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: const CustomAppbar(title: "Messages"),
-                ),
-                SizedBox(height: 24.h),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-                  child: CustomTextField(
-                    controller: controller.searchController,
-                    hintText: "Search Messages...",
-                    suffixIcon: Icon(
-                      Icons.search,
-                      color: AppColors.textPrimary,
-                      size: 24.sp,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _goHome();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            _buildTopGradient(context),
+            SafeArea(
+              child: Column(
+                children: [
+                  SizedBox(height: 16.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: CustomAppbar(
+                      title: "Messages",
+                      onTap: _goHome,
                     ),
-                    filColor: Colors.white,
-                    borderColor: AppColors.borderSecondary,
                   ),
-                ),
-                SizedBox(height: 24.h),
-                Expanded(
-                  child: Obx(() {
-                    final contacts = controller.filteredContacts;
-                    if (controller.isLoadingConversations.value &&
-                        contacts.isEmpty) {
-                      return Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.actionPrimary,
-                        ),
-                      );
-                    }
+                  SizedBox(height: 24.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: CustomTextField(
+                      controller: controller.searchController,
+                      hintText: "Search Messages...",
+                      suffixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.textPrimary,
+                        size: 24.sp,
+                      ),
+                      filColor: Colors.white,
+                      borderColor: AppColors.borderSecondary,
+                    ),
+                  ),
+                  SizedBox(height: 24.h),
+                  Expanded(
+                    child: Obx(() {
+                      final contacts = controller.filteredContacts;
+                      if (controller.isLoadingConversations.value &&
+                          contacts.isEmpty) {
+                        return Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.actionPrimary,
+                          ),
+                        );
+                      }
 
-                    if (contacts.isEmpty) {
+                      if (contacts.isEmpty) {
+                        return RefreshIndicator(
+                          onRefresh: () =>
+                              controller.fetchConversations(showError: true),
+                          child: ListView(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            children: [
+                              SizedBox(height: 120.h),
+                              Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                color: AppColors.textSecondary,
+                                size: 44.sp,
+                              ),
+                              SizedBox(height: 12.h),
+                              Text(
+                                'No conversations yet.',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.sm14Medium.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
                       return RefreshIndicator(
                         onRefresh: () =>
                             controller.fetchConversations(showError: true),
-                        child: ListView(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          children: [
-                            SizedBox(height: 120.h),
-                            Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              color: AppColors.textSecondary,
-                              size: 44.sp,
-                            ),
-                            SizedBox(height: 12.h),
-                            Text(
-                              'No conversations yet.',
-                              textAlign: TextAlign.center,
-                              style: AppTextStyles.sm14Medium.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
+                        child: ListView.builder(
+                          padding: EdgeInsets.only(
+                            top: 8.h,
+                            left: 20.w,
+                            right: 20.w,
+                            bottom: 40.h,
+                          ),
+                          itemCount: contacts.length,
+                          itemBuilder: (context, index) {
+                            final contact = contacts[index];
+                            return _buildContactItem(contact, controller);
+                          },
                         ),
                       );
-                    }
-
-                    return RefreshIndicator(
-                      onRefresh: () =>
-                          controller.fetchConversations(showError: true),
-                      child: ListView.builder(
-                        padding: EdgeInsets.only(
-                          top: 8.h,
-                          left: 20.w,
-                          right: 20.w,
-                          bottom: 40.h,
-                        ),
-                        itemCount: contacts.length,
-                        itemBuilder: (context, index) {
-                          final contact = contacts[index];
-                          return _buildContactItem(contact, controller);
-                        },
-                      ),
-                    );
-                  }),
-                ),
-              ],
+                    }),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

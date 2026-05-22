@@ -133,10 +133,10 @@ class TrainerDetailsController extends GetxController {
       final args = Get.arguments;
       final lat = args is Map && args['lat'] is num
           ? (args['lat'] as num).toDouble()
-          : 23.8103;
+          : null;
       final lng = args is Map && args['lng'] is num
           ? (args['lng'] as num).toDouble()
-          : 90.4125;
+          : null;
       final response = await _locationService.getTrainerOverview(
         trainerUserId: id,
         lat: lat,

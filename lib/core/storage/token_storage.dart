@@ -1,9 +1,12 @@
+import 'dart:math';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TokenStorage {
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
   static const _userRoleKey = 'user_role';
+  static const _clientIdKey = 'client_id';
 
   Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -35,6 +38,17 @@ class TokenStorage {
   Future<String?> getUserRole() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_userRoleKey);
+  }
+
+  Future<String> getClientId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_clientIdKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+
+    final random = Random.secure().nextInt(1 << 32).toRadixString(16);
+    final clientId = 'flutter-${DateTime.now().microsecondsSinceEpoch}-$random';
+    await prefs.setString(_clientIdKey, clientId);
+    return clientId;
   }
 
   Future<void> clear() async {

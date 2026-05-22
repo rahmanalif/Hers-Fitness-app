@@ -456,11 +456,9 @@ class ChatController extends GetxController {
       if (picked == null) return;
 
       isSendingImage.value = true;
-      final upload = await _uploadChatImage(File(picked.path));
-      await _sendImageMessage(
+      await _sendImageFile(
         conversationId: contact.id,
-        attachmentUrl: upload.url,
-        attachmentType: upload.contentType,
+        file: File(picked.path),
       );
     } on ApiException catch (error) {
       _showError('Image failed', error.message);
@@ -471,17 +469,9 @@ class ChatController extends GetxController {
     }
   }
 
-  Future<_ChatImageUploadResult> _uploadChatImage(File file) async {
-    // TODO: Wire this to the app's shared media upload endpoint when it is
-    // available. Chat image sending is intentionally isolated here so the UI
-    // and message flow are ready without introducing a role-specific API.
-    throw const ApiException('Image upload API is not available yet.');
-  }
-
-  Future<void> _sendImageMessage({
+  Future<void> _sendImageFile({
     required String conversationId,
-    required String attachmentUrl,
-    required String attachmentType,
+    required File file,
   }) async {
     await _loadCurrentUserId();
     final contact = selectedContact.value;
@@ -496,8 +486,8 @@ class ChatController extends GetxController {
       time: _formatMessageTime(now),
       createdAt: now,
       messageType: 'IMAGE',
-      attachmentUrl: attachmentUrl,
-      attachmentType: attachmentType,
+      attachmentUrl: file.path,
+      attachmentType: 'image/jpeg',
       isPending: true,
     );
 
@@ -507,20 +497,21 @@ class ChatController extends GetxController {
     }
     _sendTyping(false);
 
-    final sentOverSocket = await _sendImageOverSocket(
-      conversationId: conversationId,
-      attachmentUrl: attachmentUrl,
-      attachmentType: attachmentType,
-      pendingId: pendingId,
-    );
-
-    if (!sentOverSocket) {
-      await _sendImageOverRest(
+    try {
+      final response = await _chatService.sendImageMessage(
         conversationId: conversationId,
-        attachmentUrl: attachmentUrl,
-        attachmentType: attachmentType,
-        pendingId: pendingId,
+        image: file,
       );
+      _replacePendingMessage(
+        pendingId,
+        ChatMessage.fromModel(response, currentUserId: _currentUserId),
+      );
+    } on ApiException catch (_) {
+      _markPendingFailed(pendingId);
+      rethrow;
+    } catch (_) {
+      _markPendingFailed(pendingId);
+      rethrow;
     }
   }
 
@@ -571,50 +562,6 @@ class ChatController extends GetxController {
     return true;
   }
 
-  Future<bool> _sendImageOverSocket({
-    required String conversationId,
-    required String attachmentUrl,
-    required String attachmentType,
-    required String pendingId,
-  }) async {
-    await _connectSocket();
-    final emitted = _socketService.sendImage(
-      conversationId: conversationId,
-      attachmentUrl: attachmentUrl,
-      attachmentType: attachmentType,
-    );
-
-    if (!emitted) return false;
-
-    _pendingFallbackTimers[pendingId]?.cancel();
-    _pendingFallbackTimers[pendingId] = Timer(const Duration(seconds: 6), () {
-      final stillPending = messages.any(
-        (message) => message.id == pendingId && message.isPending,
-      );
-      if (stillPending) {
-        final pendingIndex = messages.indexWhere(
-          (message) => message.id == pendingId && message.isPending,
-        );
-        if (pendingIndex != -1 &&
-            _findDuplicateMessageIndex(messages[pendingIndex]) != -1) {
-          messages.removeAt(pendingIndex);
-          return;
-        }
-
-        unawaited(
-          _sendImageOverRest(
-            conversationId: conversationId,
-            attachmentUrl: attachmentUrl,
-            attachmentType: attachmentType,
-            pendingId: pendingId,
-          ),
-        );
-      }
-    });
-
-    return true;
-  }
-
   Future<void> _sendMessageOverRest({
     required String conversationId,
     required String text,
@@ -639,37 +586,6 @@ class ChatController extends GetxController {
       _markPendingFailed(pendingId);
       messageController.text = text;
       _showError('Message failed', 'Could not send your message.');
-    } finally {
-      isSending.value = false;
-    }
-  }
-
-  Future<void> _sendImageOverRest({
-    required String conversationId,
-    required String attachmentUrl,
-    required String attachmentType,
-    required String pendingId,
-  }) async {
-    try {
-      isSending.value = true;
-      final response = await _chatService.sendMessage(
-        conversationId: conversationId,
-        text: '',
-        messageType: 'IMAGE',
-        attachmentUrl: attachmentUrl,
-        attachmentType: attachmentType,
-      );
-      _pendingFallbackTimers.remove(pendingId)?.cancel();
-      _replacePendingMessage(
-        pendingId,
-        ChatMessage.fromModel(response, currentUserId: _currentUserId),
-      );
-    } on ApiException catch (error) {
-      _markPendingFailed(pendingId);
-      _showError('Image failed', error.message);
-    } catch (_) {
-      _markPendingFailed(pendingId);
-      _showError('Image failed', 'Could not send the image.');
     } finally {
       isSending.value = false;
     }
@@ -1026,14 +942,4 @@ class ChatController extends GetxController {
 String _formatMessageTime(DateTime? value) {
   if (value == null) return 'Now';
   return DateFormat('hh:mm a').format(value.toLocal());
-}
-
-class _ChatImageUploadResult {
-  final String url;
-  final String contentType;
-
-  const _ChatImageUploadResult({
-    required this.url,
-    required this.contentType,
-  });
 }

@@ -29,13 +29,13 @@ class MemberMyClassesScreen extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: Text(
               'All Schedules',
-              style: AppTextStyles.xs12SemiBold.copyWith(
+              style: AppTextStyles.sm14SemiBold.copyWith(
                 color: AppColors.textPrimary,
                 letterSpacing: 0,
               ),
             ),
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 16.h),
           Expanded(
             child: Obx(() {
               final schedules = controller.filteredSchedules;
@@ -56,15 +56,16 @@ class MemberMyClassesScreen extends StatelessWidget {
                 color: AppColors.actionPrimary,
                 onRefresh: () => controller.fetchBookings(showError: true),
                 child: ListView.separated(
-                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 32.h),
+                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 40.h),
                   itemCount: schedules.length,
-                  separatorBuilder: (_, __) => SizedBox(height: 12.h),
+                  separatorBuilder: (_, __) => SizedBox(height: 16.h),
                   itemBuilder: (context, index) {
                     final schedule = schedules[index];
                     final bookingId = schedule['id']?.toString() ?? '';
 
                     return _ClassScheduleCard(
                       schedule: schedule,
+                      isSubmitting: controller.isSubmitting.value,
                       onFeedback: () => _showFeedbackDialog(context),
                       onComplete: () => controller.completeBooking(bookingId),
                       onAccept: () => controller.acceptReschedule(bookingId),
@@ -86,29 +87,29 @@ class MemberMyClassesScreen extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
         16.w,
-        MediaQuery.of(context).padding.top + 14.h,
+        MediaQuery.of(context).padding.top + 18.h,
         16.w,
-        12.h,
+        22.h,
       ),
       decoration: BoxDecoration(
         color: AppColors.actionPrimary,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24.r),
-          bottomRight: Radius.circular(24.r),
+          bottomLeft: Radius.circular(32.r),
+          bottomRight: Radius.circular(32.r),
         ),
       ),
       child: Row(
         children: [
           _HeaderCircleButton(
             icon: Icons.arrow_back_ios_new,
-            iconSize: 17.sp,
+            iconSize: 18.sp,
             onTap: () => Get.back(),
           ),
           Expanded(
             child: Center(
               child: Text(
                 'My Classes',
-                style: AppTextStyles.sm14SemiBold.copyWith(
+                style: AppTextStyles.xl20Medium.copyWith(
                   color: Colors.white,
                   letterSpacing: 0,
                 ),
@@ -117,7 +118,7 @@ class MemberMyClassesScreen extends StatelessWidget {
           ),
           _HeaderCircleButton(
             icon: Icons.add,
-            iconSize: 22.sp,
+            iconSize: 24.sp,
             onTap: () {},
           ),
         ],
@@ -139,13 +140,13 @@ class MemberMyClassesScreen extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
-                height: 32.h,
-                margin: EdgeInsets.only(right: 8.w),
-                padding: EdgeInsets.symmetric(horizontal: 13.w),
+                height: 38.h,
+                margin: EdgeInsets.only(right: 10.w),
+                padding: EdgeInsets.symmetric(horizontal: 18.w),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.actionPrimary : Colors.white,
-                  borderRadius: BorderRadius.circular(9.r),
+                  borderRadius: BorderRadius.circular(100.r),
                   border: Border.all(
                     color: isSelected
                         ? AppColors.actionPrimary
@@ -154,8 +155,8 @@ class MemberMyClassesScreen extends StatelessWidget {
                 ),
                 child: Text(
                   filter,
-                  style: AppTextStyles.xxs9SemiBold.copyWith(
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                  style: AppTextStyles.sm14Medium.copyWith(
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
                     letterSpacing: 0,
                   ),
                 ),
@@ -270,10 +271,10 @@ class MemberMyClassesScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) {
         return Container(
-          padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 22.h),
+          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 32.h),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(44.r)),
           ),
           child: SafeArea(
             top: false,
@@ -283,64 +284,77 @@ class MemberMyClassesScreen extends StatelessWidget {
               children: [
                 Center(
                   child: Container(
-                    width: 58.w,
+                    width: 56.w,
                     height: 4.h,
                     decoration: BoxDecoration(
                       color: AppColors.borderPrimary,
-                      borderRadius: BorderRadius.circular(20.r),
+                      borderRadius: BorderRadius.circular(100.r),
                     ),
                   ),
                 ),
-                SizedBox(height: 14.h),
+                SizedBox(height: 24.h),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        'Reschedule Booking',
-                        style: AppTextStyles.xs12SemiBold.copyWith(
-                          color: AppColors.textPrimary,
-                          letterSpacing: 0,
-                        ),
+                    Text(
+                      'Reschedule Booking',
+                      style: AppTextStyles.xl20Medium.copyWith(
+                        color: AppColors.textPrimary,
+                        letterSpacing: 0,
                       ),
                     ),
                     GestureDetector(
                       onTap: () => Get.back(),
+                      behavior: HitTestBehavior.opaque,
                       child: Container(
-                        width: 38.w,
-                        height: 38.w,
+                        width: 48.w,
+                        height: 48.w,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
-                          border: Border.all(color: AppColors.borderPrimary),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.actionPrimary.withValues(alpha: 0.12),
+                              blurRadius: 12.r,
+                              offset: Offset(0, 4.h),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4.r,
+                              offset: Offset(0, 2.h),
+                            ),
+                          ],
                         ),
-                        child: Icon(Icons.close, size: 18.sp),
+                        child: Icon(Icons.close_rounded, size: 24.sp, color: Colors.black),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 12.h),
-                Divider(color: AppColors.borderSecondary, height: 1.h),
                 SizedBox(height: 18.h),
+                Divider(color: AppColors.borderSecondary, height: 1.h),
+                SizedBox(height: 24.h),
                 _FieldLabel(text: 'New Date'),
-                SizedBox(height: 8.h),
+                SizedBox(height: 10.h),
                 Obx(
                   () => _ModalField(
                     value: controller.selectedRescheduleDate.value,
+                    placeholder: 'mm/dd/yyyy',
                     icon: Icons.calendar_month_outlined,
                     onTap: () => _pickDate(context),
                   ),
                 ),
-                SizedBox(height: 16.h),
+                SizedBox(height: 20.h),
                 _FieldLabel(text: 'New Time'),
-                SizedBox(height: 8.h),
+                SizedBox(height: 10.h),
                 Obx(
                   () => _ModalField(
                     value: controller.selectedRescheduleTime.value,
-                    icon: Icons.schedule_rounded,
+                    placeholder: 'hh:mm a',
+                    icon: Icons.access_time_rounded,
                     onTap: () => _pickTime(context),
                   ),
                 ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 32.h),
                 _SheetPrimaryButton(
                   label: 'Confirm Reschedule',
                   onTap: () {
@@ -426,14 +440,22 @@ class _HeaderCircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 38.w,
-        height: 38.w,
-        decoration: const BoxDecoration(
+        width: 44.w,
+        height: 44.w,
+        decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8.r,
+              offset: Offset(0, 2.h),
+            ),
+          ],
         ),
-        child: Icon(icon, size: iconSize, color: AppColors.textPrimary),
+        child: Icon(icon, size: iconSize, color: Colors.black),
       ),
     );
   }
@@ -441,6 +463,7 @@ class _HeaderCircleButton extends StatelessWidget {
 
 class _ClassScheduleCard extends StatelessWidget {
   final Map<String, dynamic> schedule;
+  final bool isSubmitting;
   final VoidCallback onFeedback;
   final VoidCallback onComplete;
   final VoidCallback onAccept;
@@ -448,6 +471,7 @@ class _ClassScheduleCard extends StatelessWidget {
 
   const _ClassScheduleCard({
     required this.schedule,
+    required this.isSubmitting,
     required this.onFeedback,
     required this.onComplete,
     required this.onAccept,
@@ -459,11 +483,18 @@ class _ClassScheduleCard extends StatelessWidget {
     final status = schedule['status']?.toString() ?? 'Upcoming';
 
     return Container(
-      padding: EdgeInsets.all(12.r),
+      padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
-        color: AppColors.bgTertiary,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: AppColors.borderPrimary),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24.r),
+        border: Border.all(color: AppColors.borderSecondary),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18.r,
+            offset: Offset(0, 8.h),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,7 +510,7 @@ class _ClassScheduleCard extends StatelessWidget {
                       schedule['title']?.toString() ?? 'Class',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.xs12SemiBold.copyWith(
+                      style: AppTextStyles.base16SemiBold.copyWith(
                         color: AppColors.textPrimary,
                         letterSpacing: 0,
                       ),
@@ -489,7 +520,7 @@ class _ClassScheduleCard extends StatelessWidget {
                       'With ${schedule['trainer'] ?? 'Trainer'}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.xxs9Regular.copyWith(
+                      style: AppTextStyles.sm14Regular.copyWith(
                         color: AppColors.textSecondary,
                         letterSpacing: 0,
                       ),
@@ -500,13 +531,13 @@ class _ClassScheduleCard extends StatelessWidget {
               _StatusIndicator(status: status),
             ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 16.h),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 11.h),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10.r),
+              borderRadius: BorderRadius.circular(12.r),
               border: Border.all(color: AppColors.borderSecondary),
             ),
             child: Column(
@@ -515,17 +546,18 @@ class _ClassScheduleCard extends StatelessWidget {
                   icon: Icons.calendar_month_outlined,
                   text: schedule['date']?.toString() ?? '',
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 12.h),
                 _InfoRow(
-                  icon: Icons.schedule_rounded,
+                  icon: Icons.access_time_rounded,
                   text: schedule['time']?.toString() ?? '',
                 ),
               ],
             ),
           ),
-          SizedBox(height: 10.h),
+          SizedBox(height: 16.h),
           _CardActions(
             schedule: schedule,
+            isSubmitting: isSubmitting,
             onFeedback: onFeedback,
             onComplete: onComplete,
             onAccept: onAccept,
@@ -547,20 +579,26 @@ class _StatusIndicator extends StatelessWidget {
     if (status == 'Completed') {
       return Text(
         'Completed',
-        style: AppTextStyles.xxs9Medium.copyWith(
-          color: AppColors.statusInfo,
+        style: AppTextStyles.sm14SemiBold.copyWith(
+          color: const Color(0xFF22C55E),
           letterSpacing: 0,
         ),
       );
     }
 
     return Container(
-      width: 10.w,
-      height: 10.w,
-      margin: EdgeInsets.only(top: 3.h),
+      width: 22.w,
+      height: 22.w,
       decoration: BoxDecoration(
-        color: AppColors.actionPrimary.withValues(alpha: 0.58),
+        color: const Color(0xFFFFB6C1).withValues(alpha: 0.3),
         shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.priority_high_rounded,
+          size: 14.sp,
+          color: AppColors.actionPrimary,
+        ),
       ),
     );
   }
@@ -576,14 +614,14 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 17.sp, color: AppColors.actionPrimary),
-        SizedBox(width: 8.w),
+        Icon(icon, size: 20.sp, color: AppColors.actionPrimary),
+        SizedBox(width: 12.w),
         Expanded(
           child: Text(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.xxs9SemiBold.copyWith(
+            style: AppTextStyles.sm14Medium.copyWith(
               color: AppColors.textPrimary,
               letterSpacing: 0,
             ),
@@ -596,6 +634,7 @@ class _InfoRow extends StatelessWidget {
 
 class _CardActions extends StatelessWidget {
   final Map<String, dynamic> schedule;
+  final bool isSubmitting;
   final VoidCallback onFeedback;
   final VoidCallback onComplete;
   final VoidCallback onAccept;
@@ -603,6 +642,7 @@ class _CardActions extends StatelessWidget {
 
   const _CardActions({
     required this.schedule,
+    required this.isSubmitting,
     required this.onFeedback,
     required this.onComplete,
     required this.onAccept,
@@ -613,13 +653,17 @@ class _CardActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = schedule['status']?.toString() ?? 'Upcoming';
     final canMarkComplete = schedule['canMarkComplete'] == true;
+    final canRequestReschedule = schedule['canRequestReschedule'] == true;
+    final canShowCheckIn = schedule['canShowCheckIn'] == true;
+    final canEnableCheckIn = schedule['canEnableCheckIn'] == true;
     final canAcceptReschedule = schedule['canAcceptReschedule'] == true;
     final waitingForTrainer = schedule['waitingForTrainer'] == true;
+    final isOngoing = schedule['isOngoing'] == true;
 
     if (status == 'Completed') {
       return _CardButton(
         label: 'Feedback',
-        backgroundColor: AppColors.bgTertiary,
+        backgroundColor: Colors.white,
         foregroundColor: AppColors.textPrimary,
         bordered: true,
         onTap: onFeedback,
@@ -631,7 +675,8 @@ class _CardActions extends StatelessWidget {
         label: 'Accept New Time',
         backgroundColor: AppColors.actionSecondary,
         foregroundColor: Colors.white,
-        onTap: onAccept,
+        isLoading: isSubmitting,
+        onTap: isSubmitting ? null : onAccept,
       );
     }
 
@@ -644,36 +689,84 @@ class _CardActions extends StatelessWidget {
       );
     }
 
-    if (canMarkComplete || status == 'Pending') {
+    if (canShowCheckIn && canEnableCheckIn && canRequestReschedule) {
+      return Row(
+        children: [
+          Expanded(
+            child: _CardButton(
+              label: 'Reschedule',
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.textPrimary,
+              bordered: true,
+              onTap: isSubmitting ? null : onReschedule,
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: _CardButton(
+              label: 'Check In',
+              backgroundColor: AppColors.actionSecondary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (canShowCheckIn && canEnableCheckIn) {
+      return _CardButton(
+        label: 'Check In',
+        backgroundColor: AppColors.actionSecondary,
+        foregroundColor: Colors.white,
+      );
+    }
+
+    if (isOngoing) {
+      return _CardButton(
+        label: 'Ongoing Workout...',
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.textSecondary,
+        bordered: true,
+      );
+    }
+
+    if (canMarkComplete) {
       return _CardButton(
         label: 'Mark as complete',
         backgroundColor: AppColors.actionSecondary,
         foregroundColor: Colors.white,
-        onTap: onComplete,
+        isLoading: isSubmitting,
+        onTap: isSubmitting ? null : onComplete,
       );
     }
 
-    return Row(
-      children: [
-        Expanded(
-          child: _CardButton(
-            label: 'Cancel',
-            backgroundColor: Colors.white,
-            foregroundColor: AppColors.textPrimary,
-            bordered: true,
+    if (canRequestReschedule) {
+      return Row(
+        children: [
+          Expanded(
+            child: _CardButton(
+              label: 'Cancel',
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.textPrimary,
+              bordered: true,
+            ),
           ),
-        ),
-        SizedBox(width: 10.w),
-        Expanded(
-          child: _CardButton(
-            label: 'Rescheduled',
-            backgroundColor: AppColors.actionSecondary,
-            foregroundColor: Colors.white,
-            onTap: onReschedule,
+          SizedBox(width: 12.w),
+          Expanded(
+            child: _CardButton(
+              label: 'Reschedule',
+              backgroundColor: AppColors.actionSecondary,
+              foregroundColor: Colors.white,
+              isLoading: isSubmitting,
+              onTap: isSubmitting ? null : onReschedule,
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    }
+
+    // Fallback if none of the above (e.g. status is CONFIRMED but it's not yet time to complete or reschedule)
+    return const SizedBox.shrink();
   }
 }
 
@@ -682,6 +775,7 @@ class _CardButton extends StatelessWidget {
   final Color backgroundColor;
   final Color foregroundColor;
   final bool bordered;
+  final bool isLoading;
   final VoidCallback? onTap;
 
   const _CardButton({
@@ -689,6 +783,7 @@ class _CardButton extends StatelessWidget {
     required this.backgroundColor,
     required this.foregroundColor,
     this.bordered = false,
+    this.isLoading = false,
     this.onTap,
   });
 
@@ -697,22 +792,31 @@ class _CardButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 40.h,
+        height: 52.h,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(7.r),
+          borderRadius: BorderRadius.circular(12.r),
           border: bordered ? Border.all(color: AppColors.borderPrimary) : null,
         ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.xxs9SemiBold.copyWith(
-            color: foregroundColor,
-            letterSpacing: 0,
-          ),
-        ),
+        child: isLoading
+            ? SizedBox(
+                width: 20.w,
+                height: 20.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: foregroundColor,
+                ),
+              )
+            : Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.sm14SemiBold.copyWith(
+                  color: foregroundColor,
+                  letterSpacing: 0,
+                ),
+              ),
       ),
     );
   }
@@ -727,7 +831,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: AppTextStyles.xxs9SemiBold.copyWith(
+      style: AppTextStyles.base16Medium.copyWith(
         color: AppColors.textPrimary,
         letterSpacing: 0,
       ),
@@ -737,43 +841,45 @@ class _FieldLabel extends StatelessWidget {
 
 class _ModalField extends StatelessWidget {
   final String value;
+  final String placeholder;
   final IconData icon;
   final VoidCallback onTap;
 
   const _ModalField({
     required this.value,
+    required this.placeholder,
     required this.icon,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasValue = value.contains('/') || value.contains(':');
+    final hasValue = value.contains('/') || (value.contains(':') && !value.toLowerCase().contains('email'));
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 42.h,
-        padding: EdgeInsets.symmetric(horizontal: 12.w),
+        height: 56.h,
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(7.r),
+          borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: AppColors.borderPrimary),
         ),
         child: Row(
           children: [
             Expanded(
               child: Text(
-                hasValue ? value : 'mm/dd/yyyy',
+                hasValue ? value : placeholder,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.xxs9Regular.copyWith(
+                style: AppTextStyles.sm14Medium.copyWith(
                   color: hasValue ? AppColors.textPrimary : AppColors.textTertiary,
                   letterSpacing: 0,
                 ),
               ),
             ),
-            Icon(icon, color: AppColors.textPrimary, size: 16.sp),
+            Icon(icon, color: Colors.black, size: 22.sp),
           ],
         ),
       ),
@@ -793,15 +899,15 @@ class _SheetPrimaryButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        height: 42.h,
+        height: 56.h,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.actionSecondary,
-          borderRadius: BorderRadius.circular(5.r),
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: Text(
           label,
-          style: AppTextStyles.xxs9SemiBold.copyWith(
+          style: AppTextStyles.base16SemiBold.copyWith(
             color: Colors.white,
             letterSpacing: 0,
           ),

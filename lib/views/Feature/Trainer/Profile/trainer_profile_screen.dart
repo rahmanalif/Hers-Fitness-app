@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fitness/controllers/trainer/trainer_profile_controller.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
@@ -17,6 +19,8 @@ class TrainerProfileScreen extends StatefulWidget {
 
 class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   int selectedYear = DateTime.now().year;
+  int selectedMonth = DateTime.now().month;
+  String selectedPeriod = "Yearly";
 
   void _showYearPicker(BuildContext context) {
     showDialog(
@@ -37,6 +41,40 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                   selectedYear = dateTime.year;
                 });
                 Navigator.pop(context);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMonthPicker(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Select Month"),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: ListView.builder(
+              itemCount: 12,
+              itemBuilder: (context, index) {
+                final monthName = [
+                  "January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December"
+                ][index];
+                return ListTile(
+                  title: Text(monthName),
+                  selected: selectedMonth == index + 1,
+                  onTap: () {
+                    setState(() {
+                      selectedMonth = index + 1;
+                    });
+                    Navigator.pop(context);
+                  },
+                );
               },
             ),
           ),
@@ -153,19 +191,44 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   }
 
   Widget _buildHeader(BuildContext context, String imageUrl) {
+    final TrainerProfileController profileController = Get.find<TrainerProfileController>();
     return SizedBox(
       height: 235.h,
       child: Stack(
         children: [
           // Background Image
-          Container(
-            height: 190.h,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.only(bottomRight: Radius.circular(30), bottomLeft: Radius.circular(30)),
-              image: DecorationImage(
-                image: NetworkImage("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop"),
-                fit: BoxFit.cover,
+          Obx(
+            () => Container(
+              height: 190.h,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(bottomRight: Radius.circular(30), bottomLeft: Radius.circular(30)),
+                image: DecorationImage(
+                  image: profileController.coverPhotoUrl.value.isEmpty
+                      ? const NetworkImage("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop") as ImageProvider
+                      : FileImage(File(profileController.coverPhotoUrl.value)),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+          // Change Cover Photo Button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 50.h,
+            right: 20.w,
+            child: GestureDetector(
+              onTap: () => profileController.pickCoverPhoto(),
+              child: Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.camera_alt_outlined,
+                  color: Colors.white,
+                  size: 20.w,
+                ),
               ),
             ),
           ),
@@ -225,6 +288,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         border: Border.all(color: const Color(0xFFF1F1F1)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -233,32 +297,85 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                 "Earnings Overview",
                 style: AppTextStyles.base16SemiBold.copyWith(color: AppColors.textPrimary),
               ),
-              GestureDetector(
-                onTap: () => _showYearPicker(context),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.textSecondary),
-                      SizedBox(width: 8.w),
-                      AppText(
-                        "$selectedYear",
-                        style: AppTextStyles.xs12Regular.copyWith(color: AppColors.textPrimary),
-                      ),
-                      Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textSecondary),
-                    ],
+              if (selectedPeriod == "Yearly")
+                GestureDetector(
+                  onTap: () => _showYearPicker(context),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.textSecondary),
+                        SizedBox(width: 8.w),
+                        AppText(
+                          "$selectedYear",
+                          style: AppTextStyles.xs12Regular.copyWith(color: AppColors.textPrimary),
+                        ),
+                        Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textSecondary),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              if (selectedPeriod == "Monthly")
+                GestureDetector(
+                  onTap: () => _showMonthPicker(context),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.textSecondary),
+                        SizedBox(width: 8.w),
+                        AppText(
+                          [
+                            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                          ][selectedMonth - 1],
+                          style: AppTextStyles.xs12Regular.copyWith(color: AppColors.textPrimary),
+                        ),
+                        Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
             ],
+          ),
+          SizedBox(height: 16.h),
+          Row(
+            children: ["Weekly", "Monthly", "Yearly"].map((period) {
+              bool isSelected = selectedPeriod == period;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedPeriod = period;
+                  });
+                },
+                child: Container(
+                  margin: EdgeInsets.only(right: 8.w),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.actionPrimary : AppColors.bgTertiary,
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: AppText(
+                    period,
+                    style: AppTextStyles.xs12Medium.copyWith(
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
           SizedBox(height: 24.h),
           
-          // ── High-Fidelity Monthly Bar Chart ──────────────────────────
+          // ── High-Fidelity Activity Bar Chart ──────────────────────────
           SizedBox(
             height: 200.h,
             child: Row(
@@ -289,19 +406,19 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: List.generate(5, (index) => _DashedGridLine()),
                             ),
-                            // Bars Area (12 months)
+                            // Bars Area
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: 8.w),
-                              child: _buildMonthlyBars(),
+                              child: _buildBars(),
                             ),
                           ],
                         ),
                       ),
-                      // Month Labels Row
+                      // Labels Row
                       SizedBox(height: 12.h),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4.w),
-                        child: _buildMonthlyLabels(),
+                        child: _buildLabels(),
                       ),
                     ],
                   ),
@@ -314,43 +431,104 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     );
   }
 
-  Widget _buildMonthlyBars() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: const [
-        _Bar(day: "Jan", value: 70, width: 14),
-        _Bar(day: "Feb", value: 75, width: 14),
-        _Bar(day: "Mar", value: 85, width: 14),
-        _Bar(day: "Apr", value: 72, width: 14),
-        _Bar(day: "May", value: 80, width: 14),
-        _Bar(day: "Jun", value: 90, width: 14),
-        _Bar(day: "Jul", value: 78, width: 14),
-        _Bar(day: "Aug", value: 74, width: 14),
-        _Bar(day: "Sep", value: 71, width: 14),
-        _Bar(day: "Oct", value: 76, width: 14),
-        _Bar(day: "Nov", value: 82, width: 14),
-        _Bar(day: "Dec", value: 75, width: 14),
-      ],
-    );
+  Widget _buildBars() {
+    switch (selectedPeriod) {
+      case "Weekly":
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: const [
+            _Bar(day: "Mon", value: 70, width: 20),
+            _Bar(day: "Tue", value: 85, width: 20),
+            _Bar(day: "Wed", value: 65, width: 20),
+            _Bar(day: "Thu", value: 90, width: 20),
+            _Bar(day: "Fri", value: 75, width: 20),
+            _Bar(day: "Sat", value: 80, width: 20),
+            _Bar(day: "Sun", value: 70, width: 20),
+          ],
+        );
+      case "Monthly":
+        int daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: List.generate(daysInMonth, (index) {
+            double barWidth = (240 / daysInMonth) - 2;
+            if (barWidth < 4) barWidth = 4;
+            return _Bar(
+              day: "${index + 1}",
+              value: 65 + (index % 5) * 6.0,
+              width: barWidth,
+            );
+          }),
+        );
+      case "Yearly":
+      default:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: const [
+            _Bar(day: "Jan", value: 70, width: 14),
+            _Bar(day: "Feb", value: 75, width: 14),
+            _Bar(day: "Mar", value: 85, width: 14),
+            _Bar(day: "Apr", value: 72, width: 14),
+            _Bar(day: "May", value: 80, width: 14),
+            _Bar(day: "Jun", value: 90, width: 14),
+            _Bar(day: "Jul", value: 78, width: 14),
+            _Bar(day: "Aug", value: 74, width: 14),
+            _Bar(day: "Sep", value: 71, width: 14),
+            _Bar(day: "Oct", value: 76, width: 14),
+            _Bar(day: "Nov", value: 82, width: 14),
+            _Bar(day: "Dec", value: 75, width: 14),
+          ],
+        );
+    }
   }
 
-  Widget _buildMonthlyLabels() {
+  Widget _buildLabels() {
+    List<String> labels;
+    switch (selectedPeriod) {
+      case "Weekly":
+        labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        break;
+      case "Monthly":
+        int daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
+        labels = List.generate(daysInMonth, (index) {
+          int day = index + 1;
+          if (day == 1 || day % 5 == 0 || day == daysInMonth) {
+            return "$day";
+          }
+          return "";
+        });
+        break;
+      case "Yearly":
+      default:
+        labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        break;
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((mon) {
-        return SizedBox(
-          width: 14.w,
+      children: labels.map((label) {
+        String displayText = label;
+        if (selectedPeriod == "Yearly" && label.isNotEmpty) {
+          displayText = label.substring(0, 1);
+        }
+        return Expanded(
           child: Center(
             child: AppText(
-              mon.substring(0, 1), // J, F, M...
-              style: AppTextStyles.xs12Regular.copyWith(color: const Color(0xFF828282)),
+              displayText,
+              style: AppTextStyles.xs12Regular.copyWith(
+                color: const Color(0xFF828282),
+                fontSize: selectedPeriod == "Monthly" ? 10.sp : 12.sp,
+              ),
             ),
           ),
         );
       }).toList(),
     );
   }
+
 
   Widget _buildClassItem(String title) {
     return Container(

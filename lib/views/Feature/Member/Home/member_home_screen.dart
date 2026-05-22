@@ -1,5 +1,7 @@
 import 'package:fitness/controllers/member/member_home_controller.dart';
+import 'package:fitness/controllers/member/member_notification_controller.dart';
 import 'package:fitness/controllers/member/member_profile_controller.dart';
+import 'package:fitness/models/member_next_workout_model.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +22,10 @@ class MemberHomeScreen extends StatelessWidget {
       Get.isRegistered<MemberProfileController>()
       ? Get.find<MemberProfileController>()
       : Get.put(MemberProfileController());
+  final MemberNotificationController notificationController =
+      Get.isRegistered<MemberNotificationController>()
+      ? Get.find<MemberNotificationController>()
+      : Get.put(MemberNotificationController());
 
   @override
   Widget build(BuildContext context) {
@@ -207,37 +213,73 @@ class MemberHomeScreen extends StatelessWidget {
             ),
             GestureDetector(
               onTap: () => Get.toNamed(AppRoutes.notificationScreen),
-              child: Container(
-                width: 46.w,
-                height: 46.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    width: 1.w,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.actionPrimary.withValues(alpha: 0.62),
-                      blurRadius: 0,
-                      offset: Offset(0, 3.h),
+              child: Obx(() {
+                final unreadCount = notificationController.unreadCount.value;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 46.w,
+                      height: 46.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          width: 1.w,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.actionPrimary.withValues(
+                              alpha: 0.62,
+                            ),
+                            blurRadius: 0,
+                            offset: Offset(0, 3.h),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 14.r,
+                            offset: Offset(0, 6.h),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: SvgPicture.asset(
+                          "assets/icons/notificationIcon.svg",
+                          width: 23.w,
+                          height: 23.w,
+                        ),
+                      ),
                     ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 14.r,
-                      offset: Offset(0, 6.h),
-                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -2.w,
+                        top: -2.h,
+                        child: Container(
+                          constraints: BoxConstraints(
+                            minWidth: 18.w,
+                            minHeight: 18.w,
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 5.w),
+                          decoration: BoxDecoration(
+                            color: AppColors.statusError,
+                            borderRadius: BorderRadius.circular(999.r),
+                            border: Border.all(color: Colors.white, width: 2.w),
+                          ),
+                          child: Center(
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: AppTextStyles.xxs9SemiBold.copyWith(
+                                color: Colors.white,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
-                ),
-                child: Center(
-                  child: SvgPicture.asset(
-                    "assets/icons/notificationIcon.svg",
-                    width: 23.w,
-                    height: 23.w,
-                  ),
-                ),
-              ),
+                );
+              }),
             ),
           ],
         ),
@@ -310,17 +352,18 @@ class MemberHomeScreen extends StatelessWidget {
 
   Widget _buildNextWorkoutCard() {
     return Obx(() {
-      final booking = controller.nextBooking.value;
-      final workout = booking?.toUiMap();
-      final title = workout?['title']?.toString() ?? 'No upcoming workouts';
-      final subtitle = booking == null
-          ? 'Book a trainer to start your next session'
-          : '${workout?['category'] ?? 'Workout'} Session';
-      final date = workout?['date']?.toString() ?? '--';
-      final time = workout?['time']?.toString() ?? '--';
+      final workout = controller.selectedWorkout;
+      final hasWorkout = workout != null;
+      final title = workout?.title ?? 'No upcoming workouts';
+      final subtitle =
+          workout?.subtitle ?? 'Book a trainer to start your next session';
+      final date = workout?.compactDate ?? '--';
+      final duration = workout?.durationLabel ?? '';
 
       return GestureDetector(
-        onTap: booking == null ? null : () => _showWorkoutDetailsBottomSheet(),
+        onTap: hasWorkout
+            ? () => _showWorkoutDetailsBottomSheet(workout)
+            : null,
         child: Container(
           width: double.infinity,
           height: 176.h,
@@ -350,8 +393,8 @@ class MemberHomeScreen extends StatelessWidget {
                   ),
                   child: Image.asset(
                     "assets/images/workout.png",
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerRight,
                     errorBuilder: (_, __, ___) => Container(
                       color: AppColors.bgTertiary,
                       child: Icon(
@@ -371,8 +414,10 @@ class MemberHomeScreen extends StatelessWidget {
                     Row(
                       children: [
                         _buildIconLabel(Icons.calendar_today_outlined, date),
-                        SizedBox(width: 16.w),
-                        _buildIconLabel(Icons.access_time, time),
+                        if (duration.isNotEmpty) ...[
+                          SizedBox(width: 16.w),
+                          _buildIconLabel(Icons.access_time, duration),
+                        ],
                       ],
                     ),
                     const Spacer(),
@@ -397,18 +442,23 @@ class MemberHomeScreen extends StatelessWidget {
               Positioned(
                 right: 20.w,
                 bottom: 20.h,
-                child: Container(
-                  width: 52.w,
-                  height: 52.w,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.actionPrimary,
-                    borderRadius: BorderRadius.circular(16.r),
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward,
-                    color: Colors.white,
-                    size: 24.sp,
+                child: GestureDetector(
+                  onTap: hasWorkout ? controller.showNextWorkout : null,
+                  child: Container(
+                    width: 52.w,
+                    height: 52.w,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: hasWorkout
+                          ? AppColors.actionPrimary
+                          : AppColors.actionPrimaryDisabled,
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward,
+                      color: Colors.white,
+                      size: 24.sp,
+                    ),
                   ),
                 ),
               ),
@@ -500,7 +550,7 @@ class MemberHomeScreen extends StatelessWidget {
     });
   }
 
-  void _showWorkoutDetailsBottomSheet() {
+  void _showWorkoutDetailsBottomSheet(MemberNextWorkoutModel workout) {
     Get.bottomSheet(
       Container(
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
@@ -564,24 +614,14 @@ class MemberHomeScreen extends StatelessWidget {
               ),
               SizedBox(height: 24.h),
 
-              const TrainerCard(
-                name: "Arnold Swarznibble",
-                expertise: "HIIT Expert",
-                rating: 4.5,
-                reviewCount: 500,
-                price: "20 / session",
-                imageUrl:
-                    "https://as1.ftcdn.net/jpg/02/26/49/16/1000_F_226491635_4Qp2RzkMlglsfSLIzXjLeRmqdTnaD4p8.jpg",
-                distance: "500m",
-              ),
+              _buildWorkoutTrainerSummary(workout.trainer, workout.priceLabel),
               SizedBox(height: 16.h),
-              // Location & Time Card
               _buildDetailCard(
                 icon: Icons.location_on_rounded,
                 title: "Location & Time",
                 children: [
                   Text(
-                    "578 Boolean Ave, New York, NY, Turing St",
+                    workout.locationTime.location ?? 'Location unavailable',
                     style: AppTextStyles.sm14Medium.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -598,7 +638,7 @@ class MemberHomeScreen extends StatelessWidget {
                       ),
                       SizedBox(width: 8.w),
                       Text(
-                        "10-04-2026",
+                        workout.displayDate,
                         style: AppTextStyles.sm14Medium.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -616,7 +656,7 @@ class MemberHomeScreen extends StatelessWidget {
                       ),
                       SizedBox(width: 8.w),
                       Text(
-                        "11:00 AM",
+                        workout.displayTime,
                         style: AppTextStyles.sm14Medium.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -626,20 +666,12 @@ class MemberHomeScreen extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 16.h),
-              // Phone Number Card
               _buildDetailCard(
                 icon: Icons.phone_rounded,
                 title: "Phone Number",
                 children: [
                   Text(
-                    "(406) 555-0120",
-                    style: AppTextStyles.sm14Medium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    "(225) 555-0118",
+                    workout.trainer.phoneNumber ?? 'Phone number unavailable',
                     style: AppTextStyles.sm14Medium.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -652,6 +684,116 @@ class MemberHomeScreen extends StatelessWidget {
         ),
       ),
       isScrollControlled: true,
+    );
+  }
+
+  Widget _buildWorkoutTrainerSummary(
+    MemberWorkoutTrainer trainer,
+    String priceLabel,
+  ) {
+    final imageUrl = trainer.profileImageUrl;
+    final expertise = trainer.classesTaught ?? 'Fitness Trainer';
+    final distance = trainer.distanceLabel;
+    final rating = trainer.averageRating;
+
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.borderPrimary),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 26.r,
+            backgroundColor: AppColors.bgTertiary,
+            backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl),
+            child: imageUrl == null
+                ? Icon(Icons.person, color: AppColors.textTertiary, size: 24.sp)
+                : null,
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  trainer.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.base16Medium.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (rating != null) ...[
+                  SizedBox(height: 5.h),
+                  Row(
+                    children: [
+                      ...List.generate(5, (index) {
+                        final starValue = index + 1;
+                        return Icon(
+                          rating >= starValue
+                              ? Icons.star
+                              : rating >= starValue - 0.5
+                              ? Icons.star_half
+                              : Icons.star_border,
+                          size: 17.sp,
+                          color: Colors.orange,
+                        );
+                      }),
+                      SizedBox(width: 6.w),
+                      Text(
+                        rating.toStringAsFixed(1),
+                        style: AppTextStyles.xs12Medium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (trainer.reviewCount != null) ...[
+                        SizedBox(width: 4.w),
+                        Text(
+                          '(${trainer.reviewCount})',
+                          style: AppTextStyles.xs12Regular.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+                SizedBox(height: 7.h),
+                Wrap(
+                  spacing: 10.w,
+                  runSpacing: 6.h,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _buildSmallInfo(Icons.monitor_heart_outlined, expertise),
+                    if (distance != null)
+                      _buildSmallInfo(Icons.location_on, distance),
+                    _buildSmallInfo(Icons.payments_outlined, priceLabel),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallInfo(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16.sp, color: AppColors.textTertiary),
+        SizedBox(width: 4.w),
+        Text(
+          text,
+          style: AppTextStyles.xs12Medium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 

@@ -79,10 +79,12 @@ class ApiClient {
     required String endpoint,
     required Map<String, String> fields,
     required List<http.MultipartFile> files,
+    Map<String, String>? headers,
   }) async {
     try {
       final request = http.MultipartRequest('POST', _buildUri(endpoint));
       request.headers.addAll(await _headers(hasJsonBody: false));
+      if (headers != null) request.headers.addAll(headers);
       request.fields.addAll(fields);
       request.files.addAll(files);
 
@@ -100,11 +102,13 @@ class ApiClient {
 
   Future<Map<String, String>> _headers({bool hasJsonBody = true}) async {
     final token = await _tokenStorage.getAccessToken();
+    final clientId = await _tokenStorage.getClientId();
 
     return {
       'Accept': 'application/json',
       if (hasJsonBody) 'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      'x-client-id': clientId,
     };
   }
 

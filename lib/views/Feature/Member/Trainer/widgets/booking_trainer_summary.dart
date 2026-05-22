@@ -21,29 +21,37 @@ class BookingTrainerSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: margin,
-      padding: EdgeInsets.all(10.w),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: AppColors.bgTertiary,
-        borderRadius: BorderRadius.circular(18.r),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24.r),
+        border: Border.all(color: AppColors.borderSecondary),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12.r,
+            offset: Offset(0, 6.h),
+          ),
+        ],
       ),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(16.r),
             child: Image.network(
               controller.trainerImageUrl,
-              width: 70.w,
-              height: 70.w,
+              width: 76.w,
+              height: 76.w,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
-                width: 70.w,
-                height: 70.w,
+                width: 76.w,
+                height: 76.w,
                 color: AppColors.bgTertiary,
-                child: Icon(Icons.person, size: 26.sp),
+                child: Icon(Icons.person, size: 30.sp, color: AppColors.textTertiary),
               ),
             ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: 14.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,38 +60,45 @@ class BookingTrainerSummary extends StatelessWidget {
                   controller.trainerName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.sm14SemiBold.copyWith(
+                  style: AppTextStyles.base16SemiBold.copyWith(
                     color: AppColors.textPrimary,
-                    fontSize: 15.sp,
                     letterSpacing: 0,
                   ),
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 10.h),
                 Row(
                   children: [
                     Icon(
-                      Icons.star,
-                      color: const Color(0xFFF59E0B),
-                      size: 14.sp,
+                      Icons.star_rounded,
+                      color: const Color(0xFFFACC15),
+                      size: 20.sp,
                     ),
-                    SizedBox(width: 3.w),
+                    SizedBox(width: 4.w),
                     Text(
                       controller.trainerRating.toStringAsFixed(1),
-                      style: AppTextStyles.xs12Medium.copyWith(
+                      style: AppTextStyles.sm14Medium.copyWith(
                         color: AppColors.textSecondary,
                         letterSpacing: 0,
                       ),
                     ),
-                    SizedBox(width: 8.w),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.w),
+                      child: Text(
+                        '•',
+                        style: AppTextStyles.sm14Medium.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
                     Icon(
                       Icons.groups_rounded,
                       color: AppColors.actionPrimary,
-                      size: 14.sp,
+                      size: 20.sp,
                     ),
-                    SizedBox(width: 3.w),
+                    SizedBox(width: 6.w),
                     Text(
-                      '${controller.reviewCount} Reviews',
-                      style: AppTextStyles.xs12Regular.copyWith(
+                      '21 Clients',
+                      style: AppTextStyles.sm14Regular.copyWith(
                         color: AppColors.textSecondary,
                         letterSpacing: 0,
                       ),
@@ -96,8 +111,8 @@ class BookingTrainerSummary extends StatelessWidget {
           if (showChevron)
             Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.iconPrimary,
-              size: 24.sp,
+              color: AppColors.textPrimary,
+              size: 28.sp,
             ),
         ],
       ),

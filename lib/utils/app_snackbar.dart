@@ -4,6 +4,114 @@ import 'package:get/get.dart';
 import 'AppColor/app_colors.dart';
 import 'AppTextStyle/app_text_styles.dart';
 
+void showPushNotification(
+  String title,
+  String message, {
+  VoidCallback? onTap,
+  Duration duration = const Duration(seconds: 4),
+}) {
+  Get.rawSnackbar(
+    snackPosition: SnackPosition.TOP,
+    duration: duration,
+    onTap: onTap != null ? (_) => onTap() : null,
+    backgroundColor: Colors.transparent,
+    barBlur: 0,
+    overlayBlur: 0,
+    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    padding: EdgeInsets.zero,
+    messageText: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: AppColors.actionPrimary.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // App Icon / Notification Icon
+          Container(
+            height: 48,
+            width: 48,
+            decoration: BoxDecoration(
+              color: AppColors.bgTertiary,
+              borderRadius: BorderRadius.circular(16),
+              image: const DecorationImage(
+                image: AssetImage("assets/images/welcomeLogo.png"),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Content
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: AppTextStyles.base16SemiBold.copyWith(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      "now",
+                      style: AppTextStyles.xxs9Regular.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: AppTextStyles.sm14Regular.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Dismiss Handle Indicator (Simple line)
+          Container(
+            width: 4,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.actionPrimary.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 void showAppSnackbar(
   String title,
   String message, {

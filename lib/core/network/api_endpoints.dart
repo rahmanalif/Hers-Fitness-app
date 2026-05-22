@@ -14,11 +14,15 @@ class ApiEndpoints {
   static const identityVerification = '/identity-verification';
   static const users = '/api/users';
   static const currentUser = '/api/users/me';
+  static const memberWeeklyActivity = '/api/users/member/weekly-activity';
+  static const memberMonthlyActivity = '/api/users/member/monthly-activity';
   static const memberAssessment = '/api/users/member-assessment';
   static const trainerClasses = '/api/trainer/classes';
   static String trainerClassById(String id) => '/api/trainer/classes/$id';
   static String trainerClassReschedule(String id) =>
       '/api/trainer/classes/$id/reschedule';
+  static String trainerBookingComplete(String id) =>
+      '/api/trainer/bookings/$id/complete';
   static const memberClasses = '/api/member/classes';
   static String memberClassBookings(String id) =>
       '/api/member/classes/$id/bookings';
@@ -31,6 +35,7 @@ class ApiEndpoints {
   static const memberBookedClasses = '/api/member/booked-classes';
   static const memberBookings = '/api/member/bookings';
   static const memberNextBooking = '/api/member/bookings/next';
+  static const memberNextWorkouts = '/api/member/workouts/next';
   static String memberBookingReschedule(String id) =>
       '/api/member/bookings/$id/reschedule';
   static String memberBookingRescheduleAccept(String id) =>
@@ -51,8 +56,20 @@ class ApiEndpoints {
   static const chatConversations = '/api/chat/conversations';
   static String chatConversationMessages(String conversationId) =>
       '/api/chat/conversations/$conversationId/messages';
+  static String chatConversationMessageImage(String conversationId) =>
+      '/api/chat/conversations/$conversationId/messages/image';
   static String chatConversationSeen(String conversationId) =>
       '/api/chat/conversations/$conversationId/seen';
+  static const notifications = '/api/notifications';
+  static const notificationUnreadCount = '/api/notifications/unread-count';
+  static const notificationDeviceTokens = '/api/notifications/device-tokens';
+  static String notificationRead(String notificationId) =>
+      '/api/notifications/$notificationId/read';
+  static const notificationsReadAll = '/api/notifications/read-all';
+  static String notificationDelete(String notificationId) =>
+      '/api/notifications/$notificationId';
+  static const notificationsDeleteAll = '/api/notifications/all';
+  static const notificationTestPush = '/api/notifications/test-push';
   static String trainerReviews(String trainerUserId) =>
       '/api/reviews/trainers/$trainerUserId';
   static const countries = '/api/countries';

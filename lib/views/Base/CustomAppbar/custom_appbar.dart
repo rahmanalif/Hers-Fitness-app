@@ -18,6 +18,7 @@ class CustomAppbar extends StatelessWidget {
       children: [
         GestureDetector(
           onTap: onTap ?? () => Get.back(),
+          behavior: HitTestBehavior.opaque,
           child: Container(
             width: 48.w,
             height: 48.w,

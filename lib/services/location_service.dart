@@ -100,12 +100,15 @@ class LocationService {
 
   Future<Map<String, dynamic>> getTrainerOverview({
     required String trainerUserId,
-    required double lat,
-    required double lng,
+    double? lat,
+    double? lng,
   }) async {
     final response = await _apiClient.get(
       ApiEndpoints.trainerOverview(trainerUserId),
-      queryParameters: {'lat': lat, 'lng': lng},
+      queryParameters: {
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
+      },
     );
 
     return _extractObject(response);

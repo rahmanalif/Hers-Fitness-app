@@ -208,20 +208,30 @@ class BookTrainerController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchApprovalStatus();
-    fetchClasses(showError: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchApprovalStatus();
+      fetchClasses(showError: true);
+    });
   }
 
   Future<void> nextStep() async {
     if (isSubmitting.value) return;
 
     if (currentStep.value == 1) {
-      if (!_validateMemberInfo()) return;
+      if (selectedSlotIds.isEmpty) {
+        showAppSnackbar(
+          'Select a slot',
+          'Please select an available session to continue.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
       currentStep.value = 2;
       return;
     }
 
     if (currentStep.value == 2) {
+      if (!_validateMemberInfo()) return;
       final held = await createHold();
       if (held) currentStep.value = 3;
       return;

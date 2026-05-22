@@ -19,6 +19,9 @@ class AuthService {
     required String username,
     required String password,
     bool rememberMe = false,
+    String? fcmToken,
+    String? devicePlatform,
+    String? deviceId,
   }) async {
     final response = await _apiClient.post(
       ApiEndpoints.signIn,
@@ -26,6 +29,10 @@ class AuthService {
         'username': username,
         'password': password,
         'rememberMe': rememberMe,
+        if (fcmToken != null && fcmToken.isNotEmpty) 'fcmToken': fcmToken,
+        if (devicePlatform != null && devicePlatform.isNotEmpty)
+          'devicePlatform': devicePlatform,
+        if (deviceId != null && deviceId.isNotEmpty) 'deviceId': deviceId,
       },
     );
 

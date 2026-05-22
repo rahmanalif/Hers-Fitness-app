@@ -3,6 +3,7 @@ import 'package:fitness/models/trainer_class_model.dart';
 import 'package:fitness/services/trainer_class_service.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
+import 'package:fitness/utils/booking_action_visibility.dart';
 import 'package:fitness/utils/app_snackbar.dart';
 import 'package:fitness/views/Base/AppText/appText.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ class TrainerClassDetailsScreen extends StatefulWidget {
 class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
   final TrainerClassService _classService = TrainerClassService();
   Future<Map<String, dynamic>>? _detailsFuture;
+  String? _completingBookingId;
 
   @override
   void initState() {
@@ -37,6 +39,40 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
     setState(() {
       _detailsFuture = _classService.getClassDetails(id);
     });
+  }
+
+  Future<void> _completeTrainerBooking(
+    String bookingId,
+    Map<String, dynamic> classData,
+  ) async {
+    if (_completingBookingId != null) return;
+
+    final classId = _readString(classData, const ['id']);
+    setState(() => _completingBookingId = bookingId);
+
+    try {
+      await _classService.completeBooking(bookingId);
+      showAppSnackbar(
+        'Class completed',
+        'Trainer confirmation has been saved.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      if (classId != null && mounted) _refreshDetails(classId);
+    } on ApiException catch (error) {
+      showAppSnackbar(
+        'Complete failed',
+        error.message,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (_) {
+      showAppSnackbar(
+        'Complete failed',
+        'Could not mark this booking as complete.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      if (mounted) setState(() => _completingBookingId = null);
+    }
   }
 
   Future<void> _openRescheduleSheet(Map<String, dynamic> classData) async {
@@ -86,7 +122,10 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
             child: _detailsFuture == null
                 ? _DetailsBody(
                     classData: widget.classData,
+                    completingBookingId: _completingBookingId,
                     onReschedule: () => _openRescheduleSheet(widget.classData),
+                    onCompleteBooking: (bookingId) =>
+                        _completeTrainerBooking(bookingId, widget.classData),
                   )
                 : FutureBuilder<Map<String, dynamic>>(
                     future: _detailsFuture,
@@ -109,7 +148,10 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
                       final classData = snapshot.data ?? widget.classData;
                       return _DetailsBody(
                         classData: classData,
+                        completingBookingId: _completingBookingId,
                         onReschedule: () => _openRescheduleSheet(classData),
+                        onCompleteBooking: (bookingId) =>
+                            _completeTrainerBooking(bookingId, classData),
                       );
                     },
                   ),
@@ -122,9 +164,16 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
 
 class _DetailsBody extends StatelessWidget {
   final Map<String, dynamic> classData;
+  final String? completingBookingId;
   final VoidCallback onReschedule;
+  final ValueChanged<String> onCompleteBooking;
 
-  const _DetailsBody({required this.classData, required this.onReschedule});
+  const _DetailsBody({
+    required this.classData,
+    required this.completingBookingId,
+    required this.onReschedule,
+    required this.onCompleteBooking,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -308,9 +357,23 @@ class _DetailsBody extends StatelessWidget {
           else
             ...bookedSlots.map((item) {
               final member = _memberMap(item);
+              final booking = _bookingActionSource(item, classData, firstSlot);
+              final bookingId = _readString(booking, const [
+                'bookingId',
+                'booking_id',
+                'id',
+              ]);
               return Padding(
                 padding: EdgeInsets.only(bottom: 14.h),
-                child: _MemberTile(member: member),
+                child: _MemberTile(
+                  member: member,
+                  booking: booking,
+                  isCompleting:
+                      bookingId != null && bookingId == completingBookingId,
+                  onComplete: bookingId == null
+                      ? null
+                      : () => onCompleteBooking(bookingId),
+                ),
               );
             }),
         ],
@@ -732,8 +795,16 @@ class _InfoItem extends StatelessWidget {
 
 class _MemberTile extends StatelessWidget {
   final Map<String, String> member;
+  final Map<String, dynamic> booking;
+  final bool isCompleting;
+  final VoidCallback? onComplete;
 
-  const _MemberTile({required this.member});
+  const _MemberTile({
+    required this.member,
+    required this.booking,
+    required this.isCompleting,
+    required this.onComplete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -744,55 +815,134 @@ class _MemberTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18.r),
         border: Border.all(color: AppColors.borderSecondary),
       ),
-      child: Row(
+      child: Column(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10.r),
-            child: Image.network(
-              member['image'] ?? '',
-              width: 58.w,
-              height: 58.w,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 58.w,
-                height: 58.w,
-                color: AppColors.borderPrimary,
-                child: Icon(
-                  Icons.person_rounded,
-                  size: 24.sp,
-                  color: AppColors.iconSecondary,
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10.r),
+                child: Image.network(
+                  member['image'] ?? '',
+                  width: 58.w,
+                  height: 58.w,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 58.w,
+                    height: 58.w,
+                    color: AppColors.borderPrimary,
+                    child: Icon(
+                      Icons.person_rounded,
+                      size: 24.sp,
+                      color: AppColors.iconSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppText(
+                      member['name'] ?? 'Member',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.base16SemiBold.copyWith(
+                        color: AppColors.textPrimary,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    AppText(
+                      member['subtitle'] ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.xs12SemiBold.copyWith(
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (canShowTrainerComplete(booking)) ...[
+            SizedBox(height: 12.h),
+            _TrainerBookingButton(
+              label: 'Mark as Complete',
+              isLoading: isCompleting,
+              onTap: isCompleting ? null : onComplete,
+            ),
+          ] else if (canShowTrainerWaitingForMember(booking)) ...[
+            SizedBox(height: 12.h),
+            Container(
+              width: double.infinity,
+              height: 42.h,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: AppColors.borderPrimary),
+              ),
+              child: AppText(
+                'Waiting for member confirmation',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.xs12SemiBold.copyWith(
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0,
                 ),
               ),
             ),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppText(
-                  member['name'] ?? 'Member',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.base16SemiBold.copyWith(
-                    color: AppColors.textPrimary,
-                    letterSpacing: 0,
-                  ),
-                ),
-                SizedBox(height: 4.h),
-                AppText(
-                  member['subtitle'] ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.xs12SemiBold.copyWith(
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _TrainerBookingButton extends StatelessWidget {
+  final String label;
+  final bool isLoading;
+  final VoidCallback? onTap;
+
+  const _TrainerBookingButton({
+    required this.label,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 42.h,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.actionSecondary,
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+        child: isLoading
+            ? SizedBox(
+                width: 18.w,
+                height: 18.w,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : AppText(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.xs12SemiBold.copyWith(
+                  color: Colors.white,
+                  letterSpacing: 0,
+                ),
+              ),
       ),
     );
   }
@@ -1328,6 +1478,64 @@ String _timeText(String? value) {
   if (hour == null || minute == null) return text;
 
   return DateFormat('hh:mm a').format(DateTime(2026, 1, 1, hour, minute));
+}
+
+Map<String, dynamic> _bookingActionSource(
+  dynamic item,
+  Map<String, dynamic> classData,
+  Map<String, dynamic>? slot,
+) {
+  final booking = _asMap(item) ?? const <String, dynamic>{};
+  final locationTime =
+      _asMap(booking['locationTime']) ??
+      _asMap(booking['location_time']) ??
+      const <String, dynamic>{};
+
+  String? first(List<String> keys) {
+    return _readString(booking, keys) ??
+        _readString(locationTime, keys) ??
+        _readString(slot, keys) ??
+        _readString(classData, keys);
+  }
+
+  return {
+    ...booking,
+    'bookingId': _readString(booking, const ['bookingId', 'booking_id', 'id']),
+    'bookingStatus': first(const [
+          'bookingStatus',
+          'booking_status',
+          'status',
+        ]) ??
+        'CONFIRMED',
+    'paymentStatus': first(const ['paymentStatus', 'payment_status']) ?? '',
+    'scheduledDate': first(const [
+          'scheduledDate',
+          'scheduled_date',
+          'date',
+          'slotDate',
+          'slot_date',
+        ]) ??
+        '',
+    'startTime': first(const [
+          'startTime',
+          'start_time',
+          'time',
+          'scheduledStartTime',
+        ]) ??
+        '',
+    'endTime': first(const ['endTime', 'end_time', 'scheduledEndTime']),
+    'startAt': first(const ['startAt', 'start_at']),
+    'endAt': first(const ['endAt', 'end_at']),
+    'memberCompletedAt': first(const [
+      'memberCompletedAt',
+      'member_completed_at',
+    ]),
+    'trainerCompletedAt': first(const [
+      'trainerCompletedAt',
+      'trainer_completed_at',
+    ]),
+    'completedAt': first(const ['completedAt', 'completed_at']),
+  };
 }
 
 Map<String, String> _memberMap(dynamic item) {

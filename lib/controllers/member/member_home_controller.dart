@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:fitness/core/network/api_client.dart';
-import 'package:fitness/models/member_booking_model.dart';
+import 'package:fitness/models/member_next_workout_model.dart';
 import 'package:fitness/services/device_location_service.dart';
 import 'package:fitness/services/location_service.dart';
 import 'package:fitness/services/member_booking_service.dart';
@@ -33,19 +33,10 @@ class MemberHomeController extends GetxController {
     "Cardio",
   ];
 
-  var nextWorkouts = [
-    {
-      "title": "Yoga Flow",
-      "subtitle": "5 Series Workout",
-      "date": "10-04-2026",
-      "duration": "30min",
-      "image": "assets/images/yoga_flow.png",
-    },
-  ].obs;
-
   final trainers = <Map<String, dynamic>>[].obs;
   final isLoadingTrainers = false.obs;
-  final nextBooking = Rxn<MemberBookingModel>();
+  final nextWorkoutItems = <MemberNextWorkoutModel>[].obs;
+  final selectedWorkoutIndex = 0.obs;
   final isLoadingNextBooking = false.obs;
   final currentLat = Rxn<double>();
   final currentLng = Rxn<double>();
@@ -90,8 +81,8 @@ class MemberHomeController extends GetxController {
   void onInit() {
     super.onInit();
     _startBannerTimer();
-    fetchNextBooking();
-    fetchAllTrainers();
+    fetchNextWorkouts();
+    fetchHomeLocationAndTrainers();
   }
 
   void _startBannerTimer() {
@@ -151,10 +142,38 @@ class MemberHomeController extends GetxController {
     fetchTrainersBySpecialty(category, showError: true);
   }
 
-  Future<void> fetchNextBooking({bool showError = false}) async {
+  Future<void> fetchHomeLocationAndTrainers({bool showError = false}) async {
+    try {
+      selectedCategory.value = "Nearby";
+      await fetchNearbyTrainers(showError: showError, fallbackToAll: true);
+    } catch (_) {
+      selectedCategory.value = "All";
+      await fetchAllTrainers(showError: showError);
+    }
+  }
+
+  MemberNextWorkoutModel? get selectedWorkout {
+    if (nextWorkoutItems.isEmpty) return null;
+    final safeIndex = selectedWorkoutIndex.value < nextWorkoutItems.length
+        ? selectedWorkoutIndex.value
+        : 0;
+    return nextWorkoutItems[safeIndex];
+  }
+
+  void showNextWorkout() {
+    if (nextWorkoutItems.isEmpty) return;
+    selectedWorkoutIndex.value =
+        (selectedWorkoutIndex.value + 1) % nextWorkoutItems.length;
+  }
+
+  Future<void> fetchNextWorkouts({bool showError = false}) async {
     try {
       isLoadingNextBooking.value = true;
-      nextBooking.value = await _bookingService.getNextBooking();
+      final response = await _bookingService.getNextWorkouts(limit: 5);
+      nextWorkoutItems.assignAll(response);
+      if (selectedWorkoutIndex.value >= nextWorkoutItems.length) {
+        selectedWorkoutIndex.value = 0;
+      }
     } on ApiException catch (error) {
       if (showError) {
         showAppSnackbar(
@@ -207,6 +226,7 @@ class MemberHomeController extends GetxController {
     double? lng,
     double radiusKm = 10,
     bool showError = false,
+    bool fallbackToAll = false,
   }) async {
     try {
       isLoadingTrainers.value = true;
@@ -230,6 +250,10 @@ class MemberHomeController extends GetxController {
       );
       trainers.assignAll(response.map((item) => item.toUiMap()));
     } on DeviceLocationPermissionException catch (error) {
+      if (fallbackToAll) {
+        selectedCategory.value = "All";
+        await fetchAllTrainers(showError: false);
+      }
       if (showError) {
         showAppSnackbar(
           'Location permission required',
@@ -238,6 +262,10 @@ class MemberHomeController extends GetxController {
         );
       }
     } on ApiException catch (error) {
+      if (fallbackToAll) {
+        selectedCategory.value = "All";
+        await fetchAllTrainers(showError: false);
+      }
       if (showError) {
         showAppSnackbar(
           'Nearby trainers failed',
@@ -246,6 +274,10 @@ class MemberHomeController extends GetxController {
         );
       }
     } catch (_) {
+      if (fallbackToAll) {
+        selectedCategory.value = "All";
+        await fetchAllTrainers(showError: false);
+      }
       if (showError) {
         showAppSnackbar(
           'Nearby trainers failed',

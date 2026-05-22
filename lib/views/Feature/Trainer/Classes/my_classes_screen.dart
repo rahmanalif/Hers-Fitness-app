@@ -1,4 +1,5 @@
 import 'package:fitness/controllers/my_classes_controller.dart';
+import 'package:fitness/Helpers/route.dart';
 import 'package:fitness/models/trainer_availability_model.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
@@ -53,23 +54,30 @@ class MyClassesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
-      body: Column(
-        children: [
-          _buildHeader(context),
-          _buildSectionSwitcher(),
-          Expanded(
-            child: Obx(() {
-              if (controller.selectedSection.value ==
-                  MyClassesSection.availability) {
-                return _buildAvailabilityView();
-              }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Get.offAllNamed(AppRoutes.trainerBottomNavScreen);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bgPrimary,
+        body: Column(
+          children: [
+            _buildHeader(context),
+            _buildSectionSwitcher(),
+            Expanded(
+              child: Obx(() {
+                if (controller.selectedSection.value ==
+                    MyClassesSection.availability) {
+                  return _buildAvailabilityView();
+                }
 
-              return _buildClassesList(context);
-            }),
-          ),
-        ],
+                return _buildClassesList(context);
+              }),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -220,7 +228,8 @@ class MyClassesScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             GestureDetector(
-              onTap: () => Get.back(),
+              onTap: () => Get.offAllNamed(AppRoutes.trainerBottomNavScreen),
+              behavior: HitTestBehavior.opaque,
               child: Container(
                 width: 48.w,
                 height: 48.w,

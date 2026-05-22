@@ -10,15 +10,35 @@ import 'steps/booking_payment.dart';
 import 'steps/booking_personal_info.dart';
 import 'steps/booking_session_select.dart';
 
-class BookTrainerScreen extends StatelessWidget {
+class BookTrainerScreen extends StatefulWidget {
   const BookTrainerScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.isRegistered<BookTrainerController>()
-        ? Get.find<BookTrainerController>()
-        : Get.put(BookTrainerController());
+  State<BookTrainerScreen> createState() => _BookTrainerScreenState();
+}
 
+class _BookTrainerScreenState extends State<BookTrainerScreen> {
+  late final BookTrainerController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (Get.isRegistered<BookTrainerController>()) {
+      Get.delete<BookTrainerController>(force: true);
+    }
+    controller = Get.put(BookTrainerController());
+  }
+
+  @override
+  void dispose() {
+    if (Get.isRegistered<BookTrainerController>()) {
+      Get.delete<BookTrainerController>(force: true);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -58,8 +78,8 @@ class BookTrainerScreen extends StatelessWidget {
                     () => IndexedStack(
                       index: controller.currentStep.value - 1,
                       children: [
-                        BookingPersonalInfo(controller: controller),
                         BookingSessionSelect(controller: controller),
+                        BookingPersonalInfo(controller: controller),
                         BookingPayment(
                           controller: controller,
                           onSelectPaymentMethod: () =>
@@ -152,32 +172,53 @@ class _ProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final visualStep = controller.currentStep.value;
+      final currentStep = controller.currentStep.value;
 
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: 22.w),
         child: Row(
           children: [
-            _circle(active: true),
-            _line(active: visualStep >= 2),
-            _circle(active: visualStep >= 2),
-            _line(active: visualStep >= 3),
-            _circle(active: visualStep >= 3),
+            _circle(step: 1, currentStep: currentStep),
+            _line(active: currentStep >= 2),
+            _circle(step: 2, currentStep: currentStep),
+            _line(active: currentStep >= 3),
+            _circle(step: 3, currentStep: currentStep),
           ],
         ),
       );
     });
   }
 
-  Widget _circle({required bool active}) {
+  Widget _circle({required int step, required int currentStep}) {
+    bool isActive = step == currentStep;
+    bool isReached = step < currentStep || step == currentStep + 1;
+
+    Color borderColor;
+    Color bgColor;
+    Color dotColor;
+
+    if (isActive) {
+      borderColor = AppColors.actionPrimary;
+      bgColor = AppColors.actionPrimary;
+      dotColor = Colors.white;
+    } else if (isReached) {
+      borderColor = AppColors.actionPrimary;
+      bgColor = Colors.white;
+      dotColor = AppColors.actionPrimary;
+    } else {
+      borderColor = AppColors.borderPrimary;
+      bgColor = Colors.white;
+      dotColor = AppColors.borderPrimary;
+    }
+
     return Container(
       width: 16.w,
       height: 16.w,
       decoration: BoxDecoration(
-        color: active ? AppColors.actionPrimary : Colors.white,
+        color: bgColor,
         shape: BoxShape.circle,
         border: Border.all(
-          color: active ? AppColors.actionPrimary : AppColors.borderPrimary,
+          color: borderColor,
           width: 1.2.w,
         ),
       ),
@@ -186,7 +227,7 @@ class _ProgressIndicator extends StatelessWidget {
           width: 5.w,
           height: 5.w,
           decoration: BoxDecoration(
-            color: active ? Colors.white : AppColors.borderPrimary,
+            color: dotColor,
             shape: BoxShape.circle,
           ),
         ),
@@ -198,7 +239,7 @@ class _ProgressIndicator extends StatelessWidget {
     return Expanded(
       child: Container(
         height: 1.h,
-        color: active ? AppColors.actionPrimary : AppColors.borderPrimary,
+        color: active ? AppColors.actionPrimary : const Color(0xFFF2F2F2),
       ),
     );
   }
@@ -246,20 +287,21 @@ class _BottomButton extends StatelessWidget {
       final loading = controller.isSubmitting.value;
       return GestureDetector(
         onTap: loading ? null : () => controller.nextStep(),
+        behavior: HitTestBehavior.opaque,
         child: Container(
-          height: 52.h,
+          height: 56.h,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: AppColors.actionSecondary,
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(16.r),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (loading)
                 SizedBox(
-                  width: 18.w,
-                  height: 18.w,
+                  width: 22.w,
+                  height: 22.w,
                   child: const CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Colors.white,
@@ -268,13 +310,13 @@ class _BottomButton extends StatelessWidget {
               else ...[
                 Text(
                   text,
-                  style: AppTextStyles.xs12SemiBold.copyWith(
+                  style: AppTextStyles.base16SemiBold.copyWith(
                     color: Colors.white,
                     letterSpacing: 0,
                   ),
                 ),
-                SizedBox(width: 8.w),
-                Icon(icon, color: Colors.white, size: 16.sp),
+                SizedBox(width: 12.w),
+                Icon(icon, color: Colors.white, size: 20.sp),
               ],
             ],
           ),

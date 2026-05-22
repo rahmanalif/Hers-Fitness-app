@@ -1,3 +1,4 @@
+import 'package:fitness/utils/booking_action_visibility.dart';
 import 'package:intl/intl.dart';
 
 class MemberBookingModel {
@@ -8,6 +9,9 @@ class MemberBookingModel {
   final String startTime;
   final String? endTime;
   final String bookingStatus;
+  final String paymentStatus;
+  final String? startAt;
+  final String? endAt;
   final String? classType;
   final String? sessionFormat;
   final String? rescheduleRequestedByUserId;
@@ -26,6 +30,9 @@ class MemberBookingModel {
     required this.startTime,
     this.endTime,
     required this.bookingStatus,
+    required this.paymentStatus,
+    this.startAt,
+    this.endAt,
     this.classType,
     this.sessionFormat,
     this.rescheduleRequestedByUserId,
@@ -83,6 +90,30 @@ class MemberBookingModel {
               ]) ??
               'CONFIRMED')
           .toUpperCase(),
+      paymentStatus: (_readString(json, const [
+                'paymentStatus',
+                'payment_status',
+              ]) ??
+              '')
+          .toUpperCase(),
+      startAt: _readString(json, const ['startAt', 'start_at']) ??
+          _readString(_object(json['locationTime']) ?? const <String, dynamic>{}, const [
+            'startAt',
+            'start_at',
+          ]) ??
+          _readString(_object(json['location_time']) ?? const <String, dynamic>{}, const [
+            'startAt',
+            'start_at',
+          ]),
+      endAt: _readString(json, const ['endAt', 'end_at']) ??
+          _readString(_object(json['locationTime']) ?? const <String, dynamic>{}, const [
+            'endAt',
+            'end_at',
+          ]) ??
+          _readString(_object(json['location_time']) ?? const <String, dynamic>{}, const [
+            'endAt',
+            'end_at',
+          ]),
       classType: _readString(json, const ['classType', 'class_type']) ??
           _readString(klass, const ['classType', 'class_type']),
       sessionFormat:
@@ -122,16 +153,28 @@ class MemberBookingModel {
     return 'Strength';
   }
 
-  bool get isCompleted => bookingStatus == 'COMPLETED';
+  bool get isCompleted => bookingStatus == 'COMPLETED' || completedAt != null;
 
-  bool get isReschedulePending => bookingStatus == 'RESCHEDULE_PENDING';
+  bool get isReschedulePending => bookingStatus == 'RESCHEDULE_PENDING' || bookingStatus == 'RESCHEDULE_REQUESTED';
 
-  bool get canRequestReschedule => bookingStatus == 'CONFIRMED';
+  bool get _isConfirmedOrRescheduled => 
+    bookingStatus == 'CONFIRMED' || bookingStatus == 'RESCHEDULED';
+
+  bool get canRequestReschedule {
+    return canShowReschedule(_actionSource, 'MEMBER');
+  }
 
   bool get canMarkComplete {
-    if (bookingStatus != 'CONFIRMED') return false;
-    final end = _bookingEndDateTime;
-    return end != null && DateTime.now().isAfter(end);
+    return canShowMemberComplete(_actionSource);
+  }
+
+  bool get isOngoing {
+    if (!_isConfirmedOrRescheduled) return false;
+    final start = getBookingStartAt(_actionSource);
+    final end = getBookingEndAt(_actionSource);
+    if (start == null || end == null) return false;
+    final now = DateTime.now();
+    return now.isAfter(start) && now.isBefore(end);
   }
 
   bool canAcceptReschedule(String? memberUserId) {
@@ -157,31 +200,56 @@ class MemberBookingModel {
       'trainer': trainerName,
       'date': _displayDate(scheduledDate),
       'time': _displayTime(startTime),
-      'status': _displayStatus,
+      'status': _displayStatus(memberUserId),
       'bookingStatus': bookingStatus,
+      'paymentStatus': paymentStatus,
       'category': category,
       'classType': classType,
       'sessionFormat': sessionFormat,
+      'scheduledDate': scheduledDate,
+      'startTime': startTime,
+      'endTime': endTime,
+      'startAt': startAt,
+      'endAt': endAt,
+      'memberCompletedAt': memberCompletedAt,
+      'trainerCompletedAt': trainerCompletedAt,
+      'completedAt': completedAt,
+      'canShowCheckIn': canShowCheckIn(_actionSource, 'MEMBER'),
+      'canEnableCheckIn': canEnableCheckIn(_actionSource, 'MEMBER'),
       'canMarkComplete': canMarkComplete,
       'canRequestReschedule': canRequestReschedule,
       'canAcceptReschedule': acceptsTrainerReschedule,
       'waitingForTrainer': waitingForTrainer,
+      'isOngoing': isOngoing,
       'proposedDate': _displayDate(proposedScheduledDate ?? ''),
       'proposedTime': _displayTime(proposedStartTime ?? ''),
       'totalAmount': totalAmount,
     };
   }
 
-  String get _displayStatus {
+  String _displayStatus(String? memberUserId) {
     if (isCompleted) return 'Completed';
-    if (isReschedulePending) return 'Pending';
-    if (canMarkComplete) return 'Pending';
+    if (canAcceptReschedule(memberUserId)) return 'Reschedule Requested';
+    if (isWaitingForTrainer(memberUserId)) return 'Pending';
+    if (isOngoing) return 'Ongoing';
+    if (canMarkComplete) return 'Ended';
     return 'Upcoming';
   }
 
-  DateTime? get _bookingEndDateTime {
-    if (scheduledDate.isEmpty || (endTime ?? '').isEmpty) return null;
-    return DateTime.tryParse('$scheduledDate ${endTime!}');
+  Map<String, dynamic> get _actionSource {
+    return {
+      'id': id,
+      'bookingStatus': bookingStatus,
+      'paymentStatus': paymentStatus,
+      'scheduledDate': scheduledDate,
+      'startTime': startTime,
+      'endTime': endTime,
+      'startAt': startAt,
+      'endAt': endAt,
+      'memberCompletedAt': memberCompletedAt,
+      'trainerCompletedAt': trainerCompletedAt,
+      'completedAt': completedAt,
+    };
   }
 
   static String _displayDate(String value) {

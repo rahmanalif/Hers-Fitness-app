@@ -14,80 +14,87 @@ class AccountSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
-      body: Column(
-        children: [
-          _buildHeader(context),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
-              children: [
-                _buildSectionTitle("General"),
-                _buildSettingItem(
-                  icon: Icons.person_outline_rounded,
-                  title: "Personal Information",
-                  onTap: () => Get.toNamed(AppRoutes.personalInfoScreen),
-                ),
-                _buildSettingItem(
-                  icon: Icons.notifications_none_rounded,
-                  title: "Notifications settings",
-                  onTap: () => Get.toNamed(AppRoutes.notificationSettingsScreen),
-                ),
-                _buildSettingItem(icon: Icons.credit_card_rounded, title: "Transactions", onTap: () {}),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Get.offAllNamed(AppRoutes.trainerBottomNavScreen);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bgPrimary,
+        body: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+                children: [
+                  _buildSectionTitle("General"),
+                  _buildSettingItem(
+                    icon: Icons.person_outline_rounded,
+                    title: "Personal Information",
+                    onTap: () => Get.toNamed(AppRoutes.personalInfoScreen),
+                  ),
+                  _buildSettingItem(
+                    icon: Icons.notifications_none_rounded,
+                    title: "Notifications settings",
+                    onTap: () => Get.toNamed(AppRoutes.notificationSettingsScreen),
+                  ),
+                  _buildSettingItem(icon: Icons.credit_card_rounded, title: "Transactions", onTap: () {}),
 
-                SizedBox(height: 24.h),
-                _buildSectionTitle("Location"),
-                _buildLiveLocationSwitch(),
-                
-                SizedBox(height: 24.h),
-                _buildSectionTitle("Security & Privacy"),
-                _buildSettingItem(
-                  icon: Icons.lock_outline_rounded,
-                  title: "Change Password",
-                  onTap: () => Get.toNamed(AppRoutes.profileChangePasswordScreen),
-                ),
-                _buildSettingItem(
-                  icon: Icons.description_outlined,
-                  title: "Privacy Policy",
-                  onTap: () => Get.toNamed(AppRoutes.privacyPolicyScreen),
-                ),
-                _buildSettingItem(
-                  icon: Icons.gavel_outlined,
-                  title: "Terms of Service",
-                  onTap: () => Get.toNamed(AppRoutes.termsOfServiceScreen),
-                ),
-                
-                SizedBox(height: 24.h),
-                _buildSectionTitle("Help & Support"),
-                _buildSettingItem(
-                  icon: Icons.info_outline_rounded,
-                  title: "About Us",
-                  onTap: () => Get.toNamed(AppRoutes.aboutUsScreen),
-                ),
-                _buildSettingItem(
-                  icon: Icons.chat_bubble_outline_rounded,
-                  title: "Help Center",
-                  onTap: () => Get.toNamed(AppRoutes.helpCenterScreen),
-                ),
-                
-                SizedBox(height: 24.h),
-                _buildSectionTitle("Danger Zone"),
-                _buildDeleteAccountButton(context),
-                
-                SizedBox(height: 24.h),
-                _buildSectionTitle("Log Out"),
-                _buildSettingItem(
-                  icon: Icons.logout_rounded,
-                  title: "Sign Out",
-                  onTap: () => _showLogoutDialog(context),
-                ),
-                
-                SizedBox(height: 40.h),
-              ],
+                  SizedBox(height: 24.h),
+                  _buildSectionTitle("Location"),
+                  _buildLiveLocationSwitch(),
+                  
+                  SizedBox(height: 24.h),
+                  _buildSectionTitle("Security & Privacy"),
+                  _buildSettingItem(
+                    icon: Icons.lock_outline_rounded,
+                    title: "Change Password",
+                    onTap: () => Get.toNamed(AppRoutes.profileChangePasswordScreen),
+                  ),
+                  _buildSettingItem(
+                    icon: Icons.description_outlined,
+                    title: "Privacy Policy",
+                    onTap: () => Get.toNamed(AppRoutes.privacyPolicyScreen),
+                  ),
+                  _buildSettingItem(
+                    icon: Icons.gavel_outlined,
+                    title: "Terms of Service",
+                    onTap: () => Get.toNamed(AppRoutes.termsOfServiceScreen),
+                  ),
+                  
+                  SizedBox(height: 24.h),
+                  _buildSectionTitle("Help & Support"),
+                  _buildSettingItem(
+                    icon: Icons.info_outline_rounded,
+                    title: "About Us",
+                    onTap: () => Get.toNamed(AppRoutes.aboutUsScreen),
+                  ),
+                  _buildSettingItem(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: "Help Center",
+                    onTap: () => Get.toNamed(AppRoutes.helpCenterScreen),
+                  ),
+                  
+                  SizedBox(height: 24.h),
+                  _buildSectionTitle("Danger Zone"),
+                  _buildDeleteAccountButton(context),
+                  
+                  SizedBox(height: 24.h),
+                  _buildSectionTitle("Log Out"),
+                  _buildSettingItem(
+                    icon: Icons.logout_rounded,
+                    title: "Sign Out",
+                    onTap: () => _showLogoutDialog(context),
+                  ),
+                  
+                  SizedBox(height: 40.h),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -270,7 +277,8 @@ class AccountSettingsScreen extends StatelessWidget {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Get.back(),
+            onTap: () => Get.offAllNamed(AppRoutes.trainerBottomNavScreen),
+            behavior: HitTestBehavior.opaque,
             child: Container(
               width: 44.w,
               height: 44.w,

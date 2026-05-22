@@ -84,6 +84,10 @@ class TrainerClassService {
     return _extractObjectOrNull(response);
   }
 
+  Future<void> completeBooking(String bookingId) async {
+    await _apiClient.patch(ApiEndpoints.trainerBookingComplete(bookingId));
+  }
+
   Future<void> deleteClass(String id) async {
     await _apiClient.delete(ApiEndpoints.trainerClassById(id));
   }

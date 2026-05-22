@@ -1,23 +1,30 @@
+import 'dart:io';
+
 import 'package:fitness/core/network/api_client.dart';
+import 'package:fitness/core/storage/local_storage.dart';
 import 'package:fitness/models/user_profile_model.dart';
 import 'package:fitness/services/user_service.dart';
 import 'package:get/get.dart';
 import 'package:fitness/utils/app_snackbar.dart';
+import 'package:image_picker/image_picker.dart';
 
 class TrainerProfileController extends GetxController {
   TrainerProfileController({UserService? userService})
     : _userService = userService ?? UserService();
 
   final UserService _userService;
+  final _localStorage = LocalStorage();
 
   final user = Rxn<UserProfileModel>();
   final isLoading = false.obs;
   final isChangingPassword = false.obs;
+  final coverPhotoUrl = RxString('');
 
   @override
   void onInit() {
     super.onInit();
     fetchProfile();
+    loadCoverPhoto();
   }
 
   String get displayName => user.value?.displayName ?? 'Trainer';
@@ -26,6 +33,22 @@ class TrainerProfileController extends GetxController {
       user.value?.displayLocation ?? 'Location not added';
 
   String get profileImageUrl => user.value?.imageUrl?.trim() ?? '';
+
+  Future<void> loadCoverPhoto() async {
+    final path = await _localStorage.getTrainerCoverPhoto();
+    if (path != null) {
+      coverPhotoUrl.value = path;
+    }
+  }
+
+  Future<void> pickCoverPhoto() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      await _localStorage.saveTrainerCoverPhoto(image.path);
+      coverPhotoUrl.value = image.path;
+    }
+  }
 
   Future<void> fetchProfile({bool showError = false}) async {
     try {

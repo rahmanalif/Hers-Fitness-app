@@ -1,9 +1,14 @@
+import 'dart:io';
+
 import 'package:fitness/Helpers/route.dart';
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/core/storage/token_storage.dart';
 import 'package:fitness/services/auth_service.dart';
+import 'package:fitness/services/fcm_service.dart';
 import 'package:fitness/services/user_service.dart';
 import 'package:fitness/utils/auth_role.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fitness/utils/app_snackbar.dart';
@@ -41,19 +46,29 @@ class SignInController extends GetxController {
 
     try {
       isLoading.value = true;
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      final deviceId = await _tokenStorage.getClientId();
       final authResponse = await _authService.signIn(
         username: email,
         password: password,
         rememberMe: rememberMe.value,
+        fcmToken: fcmToken,
+        devicePlatform: Platform.isIOS ? 'IOS' : 'ANDROID',
+        deviceId: deviceId,
       );
 
       final role = await _resolveRole(authResponse.user?.role);
       if (role == 'trainer') {
+        await FcmService.instance.registerCurrentToken();
         Get.offAllNamed(AppRoutes.trainerBottomNavScreen);
         return;
       }
 
       if (role == 'member') {
+        await FcmService.instance.registerCurrentToken();
         Get.offAllNamed(AppRoutes.memberBottomNavScreen);
         return;
       }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fitness/controllers/common/chat_controller.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
@@ -128,7 +130,8 @@ class _ChatScreenState extends State<ChatScreen> {
           SizedBox(width: 12.w),
           Expanded(
             child: Obx(() {
-              final selected = controller.selectedContact.value ?? widget.contact;
+              final selected =
+                  controller.selectedContact.value ?? widget.contact;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -146,10 +149,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     controller.isParticipantTyping.value
                         ? 'Typing...'
                         : selected.isParticipantActive
-                            ? 'Active now'
-                            : 'Offline',
+                        ? 'Active now'
+                        : 'Offline',
                     style: AppTextStyles.xs12Regular.copyWith(
-                      color: selected.isParticipantActive ||
+                      color:
+                          selected.isParticipantActive ||
                               controller.isParticipantTyping.value
                           ? Colors.green
                           : AppColors.textTertiary,
@@ -177,10 +181,8 @@ class _ChatScreenState extends State<ChatScreen> {
           controller.messages.isEmpty) {
         return _ErrorState(
           message: controller.messagesError.value,
-          onRetry: () => controller.fetchMessages(
-            widget.contact.id,
-            showError: true,
-          ),
+          onRetry: () =>
+              controller.fetchMessages(widget.contact.id, showError: true),
         );
       }
 
@@ -201,7 +203,7 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
         itemCount:
             controller.messages.length +
-                (controller.isParticipantTyping.value ? 1 : 0),
+            (controller.isParticipantTyping.value ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == controller.messages.length) {
             return _TypingIndicator(avatarUrl: widget.contact.avatarUrl);
@@ -250,8 +252,9 @@ class _ChatScreenState extends State<ChatScreen> {
     return Padding(
       padding: EdgeInsets.only(bottom: 14.h),
       child: Row(
-        mainAxisAlignment:
-            message.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: message.isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!message.isMe) ...[
@@ -267,19 +270,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 Container(
                   padding: EdgeInsets.all(14.r),
                   decoration: BoxDecoration(
-                    color:
-                        message.isMe ? Colors.black : const Color(0xFFEBEBEB),
+                    color: message.isMe
+                        ? Colors.black
+                        : const Color(0xFFEBEBEB),
                     borderRadius: BorderRadius.circular(14.r),
                   ),
-                  child: message.messageType == 'IMAGE' &&
+                  child:
+                      message.messageType == 'IMAGE' &&
                           message.attachmentUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8.r),
-                          child: Image.network(
-                            message.attachmentUrl!,
-                            width: 190.w,
-                            fit: BoxFit.cover,
-                          ),
+                          child: _buildMessageImage(message.attachmentUrl!),
                         )
                       : Text(
                           message.text,
@@ -298,10 +299,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       message.isFailed
                           ? 'Failed'
                           : message.isPending
-                              ? 'Sending...'
-                              : message.seenAt != null
-                                  ? 'Seen'
-                                  : 'Sent',
+                          ? 'Sending...'
+                          : message.seenAt != null
+                          ? 'Seen'
+                          : 'Sent',
                       style: AppTextStyles.xxs9Regular.copyWith(
                         color: message.isFailed
                             ? AppColors.statusError
@@ -419,6 +420,17 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildMessageImage(String imageUrl) {
+    final isRemote =
+        imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+
+    if (!isRemote) {
+      return Image.file(File(imageUrl), width: 190.w, fit: BoxFit.cover);
+    }
+
+    return Image.network(imageUrl, width: 190.w, fit: BoxFit.cover);
   }
 
   void _showImageSourceSheet() {

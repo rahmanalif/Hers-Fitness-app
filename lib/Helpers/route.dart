@@ -162,7 +162,13 @@ class AppRoutes {
     GetPage(name: helpCenterScreen, page: () => const HelpCenterScreen()),
     GetPage(
       name: trainerBottomNavScreen,
-      page: () => const TrainerBottomNavScreen(),
+      page: () {
+        final args = Get.arguments;
+        final initialIndex = args is Map
+            ? int.tryParse(args['initialIndex']?.toString() ?? '') ?? 0
+            : 0;
+        return TrainerBottomNavScreen(initialIndex: initialIndex);
+      },
     ),
     GetPage(
       name: assessmentNumberOneScreen,
@@ -205,7 +211,16 @@ class AppRoutes {
       page: () => AssessmentNumberTenScreen(),
     ),
     GetPage(name: myClassesScreen, page: () => MemberMyClassesScreen()),
-    GetPage(name: memberBottomNavScreen, page: () => MemberBottomNavScreen()),
+    GetPage(
+      name: memberBottomNavScreen,
+      page: () {
+        final args = Get.arguments;
+        final initialIndex = args is Map
+            ? int.tryParse(args['initialIndex']?.toString() ?? '') ?? 0
+            : 0;
+        return MemberBottomNavScreen(initialIndex: initialIndex);
+      },
+    ),
     GetPage(name: trainerListScreen, page: () => TrainerListScreen()),
     GetPage(name: trainerDetailsScreen, page: () => TrainerDetailsScreen()),
     GetPage(

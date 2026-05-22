@@ -137,8 +137,16 @@ class TrainerProfileModel {
           ]) ??
           '',
       rating:
-          _readDouble(source, const ['rating', 'averageRating']) ??
-          _readDouble(profile, const ['rating', 'averageRating']) ??
+          _readDouble(source, const [
+            'rating',
+            'averageRating',
+            'average_rating',
+          ]) ??
+          _readDouble(profile, const [
+            'rating',
+            'averageRating',
+            'average_rating',
+          ]) ??
           0,
       reviewCount:
           _readInt(source, const ['reviewCount', 'review_count', 'reviews']) ??

@@ -1,4 +1,5 @@
 import 'package:fitness/Helpers/route.dart';
+import 'package:fitness/controllers/member/member_notification_controller.dart';
 import 'package:fitness/controllers/my_classes_controller.dart';
 import 'package:fitness/controllers/trainer/trainer_profile_controller.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
@@ -33,11 +34,15 @@ class TrainerHomeScreen extends StatelessWidget {
         Get.isRegistered<TrainerProfileController>()
         ? Get.find<TrainerProfileController>()
         : Get.put(TrainerProfileController());
+    final MemberNotificationController notificationController =
+        Get.isRegistered<MemberNotificationController>()
+        ? Get.find<MemberNotificationController>()
+        : Get.put(MemberNotificationController());
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: Column(
         children: [
-          _buildHeader(context, profileController),
+          _buildHeader(context, profileController, notificationController),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
@@ -204,6 +209,7 @@ class TrainerHomeScreen extends StatelessWidget {
   Widget _buildHeader(
     BuildContext context,
     TrainerProfileController profileController,
+    MemberNotificationController notificationController,
   ) {
     return Obx(() {
       final imageUrl = profileController.profileImageUrl;
@@ -273,25 +279,59 @@ class TrainerHomeScreen extends StatelessWidget {
             // Notification Icon
             GestureDetector(
               onTap: () => Get.toNamed(AppRoutes.notificationScreen),
-              child: Container(
-                width: 48.w,
-                height: 48.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
-                child: Center(
-                  child: SvgPicture.asset(
-                    "assets/icons/notificationIcon.svg",
-                    width: 24.w,
-                    height: 24.w,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
+              child: Obx(() {
+                final unreadCount = notificationController.unreadCount.value;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 48.w,
+                      height: 48.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                      child: Center(
+                        child: SvgPicture.asset(
+                          "assets/icons/notificationIcon.svg",
+                          width: 24.w,
+                          height: 24.w,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -2.w,
+                        top: -2.h,
+                        child: Container(
+                          constraints: BoxConstraints(
+                            minWidth: 18.w,
+                            minHeight: 18.w,
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 5.w),
+                          decoration: BoxDecoration(
+                            color: AppColors.statusError,
+                            borderRadius: BorderRadius.circular(999.r),
+                            border: Border.all(color: Colors.white, width: 2.w),
+                          ),
+                          child: Center(
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: AppTextStyles.xxs9SemiBold.copyWith(
+                                color: Colors.white,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
             ),
           ],
         ),

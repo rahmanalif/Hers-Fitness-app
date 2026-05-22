@@ -1,6 +1,7 @@
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/core/network/api_endpoints.dart';
 import 'package:fitness/models/member_booking_model.dart';
+import 'package:fitness/models/member_next_workout_model.dart';
 
 class MemberBookingService {
   MemberBookingService({ApiClient? apiClient})
@@ -20,6 +21,17 @@ class MemberBookingService {
     final response = await _apiClient.get(ApiEndpoints.memberNextBooking);
     final data = _extractObjectOrNull(response);
     return data == null ? null : MemberBookingModel.fromJson(data);
+  }
+
+  Future<List<MemberNextWorkoutModel>> getNextWorkouts({int limit = 5}) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.memberNextWorkouts,
+      queryParameters: {'limit': limit},
+    );
+    return _extractList(response)
+        .whereType<Map<String, dynamic>>()
+        .map(MemberNextWorkoutModel.fromJson)
+        .toList();
   }
 
   Future<List<MemberBookingModel>> getBookings() async {

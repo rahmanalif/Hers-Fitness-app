@@ -49,9 +49,6 @@ class BookingPersonalInfo extends StatelessWidget {
             Icons.location_on_outlined,
           ),
           SizedBox(height: 14.h),
-          _buildLabel('Select Class Type'),
-          _ClassTypePicker(controller: controller),
-          SizedBox(height: 18.h),
           Text(
             'Additional Information',
             style: AppTextStyles.xs12SemiBold.copyWith(
@@ -94,67 +91,6 @@ class BookingPersonalInfo extends StatelessWidget {
         style: AppTextStyles.xs12Medium.copyWith(
           color: AppColors.textPrimary,
           letterSpacing: 0,
-        ),
-      ),
-    );
-  }
-}
-
-class _ClassTypePicker extends StatelessWidget {
-  final BookTrainerController controller;
-
-  const _ClassTypePicker({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      offset: Offset(0, 48.h),
-      color: Colors.white,
-      elevation: 10,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-      onSelected: controller.setClassType,
-      itemBuilder: (_) => controller.classTypes
-          .map(
-            (type) => PopupMenuItem<String>(
-              value: type,
-              height: 42.h,
-              child: Text(
-                type == 'IN_PERSON' ? 'In person' : 'Online',
-                style: AppTextStyles.xs12Medium.copyWith(
-                  color: AppColors.textPrimary,
-                  fontSize: 15.sp,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          )
-          .toList(),
-      child: Container(
-        height: 48.h,
-        padding: EdgeInsets.symmetric(horizontal: 12.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(color: AppColors.borderPrimary),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Obx(
-                () => Text(
-                  controller.selectedClassType.value == 'IN_PERSON'
-                      ? 'In person'
-                      : 'Online',
-                  style: AppTextStyles.xs12Regular.copyWith(
-                    color: AppColors.textPrimary,
-                    fontSize: 15.sp,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-            ),
-            Icon(Icons.keyboard_arrow_down_rounded, size: 20.sp),
-          ],
         ),
       ),
     );

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/core/network/api_endpoints.dart';
 import 'package:fitness/models/chat_models.dart';
+import 'package:http/http.dart' as http;
 
 class ChatService {
   ChatService({ApiClient? apiClient})
@@ -56,6 +59,23 @@ class ChatService {
         if (attachmentType != null && attachmentType.isNotEmpty)
           'attachmentType': attachmentType,
       },
+    );
+
+    return ChatMessageModel.fromJson(readMapPayload(response));
+  }
+
+  Future<ChatMessageModel> sendImageMessage({
+    required String conversationId,
+    required File image,
+  }) async {
+    if (!await image.exists()) {
+      throw const ApiException('Selected image was not found.');
+    }
+
+    final response = await _apiClient.multipartPost(
+      endpoint: ApiEndpoints.chatConversationMessageImage(conversationId),
+      fields: const <String, String>{},
+      files: [await http.MultipartFile.fromPath('image', image.path)],
     );
 
     return ChatMessageModel.fromJson(readMapPayload(response));
