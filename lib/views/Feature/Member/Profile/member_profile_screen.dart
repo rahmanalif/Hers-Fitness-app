@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:fitness/controllers/member/member_profile_controller.dart';
+import 'package:fitness/views/Base/CustomAppbar/custom_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
@@ -162,10 +163,12 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
 
   Widget _buildHeader(BuildContext context, String imageUrl) {
     return SizedBox(
-      height: 235.h,
+      height: 250.h,
       child: Stack(
         children: [
-          // Background Image
+          // Background Gradient (Standard)
+          _buildTopGradient(context),
+          // Cover Photo
           Obx(
             () => Container(
               height: 190.h,
@@ -186,16 +189,16 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
               ),
             ),
           ),
-          // Change Cover Photo Button
+          // Change Cover Photo Button (Repositioned to bottom right of cover area)
           Positioned(
-            top: MediaQuery.of(context).padding.top + 50.h,
-            right: 20.w,
+            top: 140.h,
+            right: 30.w,
             child: GestureDetector(
               onTap: () => _profileController.pickCoverPhoto(),
               child: Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -206,24 +209,41 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
               ),
             ),
           ),
-          // Top Buttons
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10.h,
-            left: 20.w,
-            right: 20.w,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _HeaderCircleButton(
-                  icon: Icons.arrow_back_ios_new_rounded,
-                  onTap: () => Get.back(),
+          // Top Buttons (Standard Appbar Style)
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: CustomAppbar(
+                onTap: () => Get.offAllNamed(AppRoutes.memberBottomNavScreen),
+                trailing: GestureDetector(
+                  onTap: () => Get.toNamed(AppRoutes.memberAccountSettingsScreen),
+                  child: Container(
+                    width: 44.w,
+                    height: 44.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.actionPrimary,
+                          blurRadius: 0,
+                          offset: const Offset(0, 3),
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      size: 20,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
-                _HeaderCircleButton(
-                  icon: Icons.settings_outlined,
-                  onTap: () =>
-                      Get.toNamed(AppRoutes.memberAccountSettingsScreen),
-                ),
-              ],
+              ),
             ),
           ),
           // Profile Image
@@ -253,6 +273,32 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTopGradient(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 250.h,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                const Color(0xFFFFDADF).withValues(alpha: 0.9),
+                const Color(0xFFFFECEE).withValues(alpha: 0.8),
+                const Color(0xFFFFF7F5).withValues(alpha: 0.58),
+                Colors.white.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.46, 0.78, 1],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -694,7 +740,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
               borderRadius: BorderRadius.circular(12.r),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -721,42 +767,6 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
             size: 16.sp,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HeaderCircleButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _HeaderCircleButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 48.w,
-        height: 48.w,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFFF9F9F9),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.actionPrimary,
-              blurRadius: 0,
-              offset: const Offset(0, 3),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(child: Icon(icon, size: 20, color: Colors.black)),
       ),
     );
   }

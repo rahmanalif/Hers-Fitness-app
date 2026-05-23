@@ -48,8 +48,8 @@ class _AssessmentNumberFiveScreenState extends State<AssessmentNumberFiveScreen>
                 center: const Alignment(1.0, -1.0),
                 radius: 2.5,
                 colors: [
-                  const Color(0xFFFFA6B4).withOpacity(0.5),
-                  const Color(0xFFFFE0B9).withOpacity(0.25),
+                  const Color(0xFFFFA6B4).withValues(alpha: 0.5),
+                  const Color(0xFFFFE0B9).withValues(alpha: 0.25),
                   Colors.white,
                 ],
                 stops: const [0.0, 0.7, 1.0],
@@ -83,10 +83,10 @@ class _AssessmentNumberFiveScreenState extends State<AssessmentNumberFiveScreen>
                   width: double.infinity,
                   padding: EdgeInsets.all(16.w),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(24.r),
                     border: Border.all(
-                      color: AppColors.actionPrimary.withOpacity(0.3),
+                      color: AppColors.actionPrimary.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),

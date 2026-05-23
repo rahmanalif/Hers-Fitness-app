@@ -51,8 +51,8 @@ class AssessmentNumberSixScreen extends StatelessWidget {
                 center: const Alignment(1.0, -1.0),
                 radius: 2.5,
                 colors: [
-                  const Color(0xFFFFA6B4).withOpacity(0.5),
-                  const Color(0xFFFFE0B9).withOpacity(0.25),
+                  const Color(0xFFFFA6B4).withValues(alpha: 0.5),
+                  const Color(0xFFFFE0B9).withValues(alpha: 0.25),
                   Colors.white,
                 ],
                 stops: const [0.0, 0.7, 1.0],
@@ -139,12 +139,12 @@ class AssessmentNumberSixScreen extends StatelessWidget {
           color: isSelected ? AppColors.actionPrimary : AppColors.bgTertiary,
           borderRadius: BorderRadius.circular(24.r),
           border: Border.all(
-            color: isSelected ? Colors.transparent : AppColors.actionPrimary.withOpacity(0.1),
+            color: isSelected ? Colors.transparent : AppColors.actionPrimary.withValues(alpha: 0.1),
             width: 1,
           ),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: AppColors.actionPrimary.withOpacity(0.2),
+              color: AppColors.actionPrimary.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             )
@@ -163,7 +163,7 @@ class AssessmentNumberSixScreen extends StatelessWidget {
             Text(
               subtitle,
               style: AppTextStyles.sm14Medium.copyWith(
-                color: isSelected ? Colors.white.withOpacity(0.8) : AppColors.textSecondary,
+                color: isSelected ? Colors.white.withValues(alpha: 0.8) : AppColors.textSecondary,
               ),
             ),
             const Spacer(),
@@ -171,7 +171,7 @@ class AssessmentNumberSixScreen extends StatelessWidget {
               alignment: Alignment.bottomRight,
               child: Icon(
                 icon,
-                color: isSelected ? Colors.white.withOpacity(0.9) : AppColors.iconSecondary.withOpacity(0.5),
+                color: isSelected ? Colors.white.withValues(alpha: 0.9) : AppColors.iconSecondary.withValues(alpha: 0.5),
                 size: 32.sp,
               ),
             ),

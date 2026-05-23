@@ -1,10 +1,14 @@
 import 'package:fitness/controllers/member/my_classes_controller.dart';
+import 'package:fitness/models/trainer_review_model.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
+import 'package:fitness/views/Base/CustomAppbar/custom_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../Helpers/route.dart';
 
 class MemberMyClassesScreen extends StatelessWidget {
   MemberMyClassesScreen({super.key});
@@ -15,113 +19,159 @@ class MemberMyClassesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
         children: [
-          _buildHeader(context),
-          SizedBox(height: 12.h),
-          Padding(
-            padding: EdgeInsets.only(left: 16.w),
-            child: _buildFilters(),
-          ),
-          SizedBox(height: 18.h),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            child: Text(
-              'All Schedules',
-              style: AppTextStyles.sm14SemiBold.copyWith(
-                color: AppColors.textPrimary,
-                letterSpacing: 0,
-              ),
-            ),
-          ),
-          SizedBox(height: 16.h),
-          Expanded(
-            child: Obx(() {
-              final schedules = controller.filteredSchedules;
-
-              if (controller.isLoading.value && schedules.isEmpty) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.actionPrimary,
+          _buildTopGradient(context),
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 16.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: CustomAppbar(
+                    title: "My Classes",
+                    onTap: () => Get.offAllNamed(AppRoutes.memberBottomNavScreen),
                   ),
-                );
-              }
-
-              if (schedules.isEmpty) {
-                return _buildEmptyState();
-              }
-
-              return RefreshIndicator(
-                color: AppColors.actionPrimary,
-                onRefresh: () => controller.fetchBookings(showError: true),
-                child: ListView.separated(
-                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 40.h),
-                  itemCount: schedules.length,
-                  separatorBuilder: (_, __) => SizedBox(height: 16.h),
-                  itemBuilder: (context, index) {
-                    final schedule = schedules[index];
-                    final bookingId = schedule['id']?.toString() ?? '';
-
-                    return _ClassScheduleCard(
-                      schedule: schedule,
-                      isSubmitting: controller.isSubmitting.value,
-                      onFeedback: () => _showFeedbackDialog(context),
-                      onComplete: () => controller.completeBooking(bookingId),
-                      onAccept: () => controller.acceptReschedule(bookingId),
-                      onReschedule: () =>
-                          _showRescheduleModal(context, bookingId),
-                    );
-                  },
                 ),
-              );
-            }),
+                SizedBox(height: 24.h),
+                Padding(
+                  padding: EdgeInsets.only(left: 16.w),
+                  child: _buildFilters(),
+                ),
+                SizedBox(height: 18.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Text(
+                    'All Schedules',
+                    style: AppTextStyles.sm14SemiBold.copyWith(
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                Expanded(
+                  child: Obx(() {
+                    final schedules = controller.filteredSchedules;
+
+                    if (controller.isLoading.value && schedules.isEmpty) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.actionPrimary,
+                        ),
+                      );
+                    }
+
+                    if (schedules.isEmpty) {
+                      return _buildEmptyState();
+                    }
+
+                    return RefreshIndicator(
+                      color: AppColors.actionPrimary,
+                      onRefresh: () => controller.fetchBookings(showError: true),
+                      child: ListView.separated(
+                        padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 40.h),
+                        itemCount: schedules.length,
+                        separatorBuilder: (_, __) => SizedBox(height: 16.h),
+                        itemBuilder: (context, index) {
+                          final schedule = schedules[index];
+                          final bookingId = schedule['id']?.toString() ?? '';
+                          final trainerUserId =
+                              schedule['trainerUserId']?.toString() ?? '';
+                          final existingReview =
+                              schedule['existingReview'] as TrainerReviewModel?;
+
+                          return _ClassScheduleCard(
+                            schedule: schedule,
+                            isSubmitting: controller.isSubmitting.value,
+                            onFeedback: () => _showFeedbackDialog(
+                              context,
+                              bookingId: bookingId,
+                              trainerUserId: trainerUserId,
+                              existingReview: existingReview,
+                            ),
+                            onComplete: () => controller.completeBooking(bookingId),
+                            onAccept: () => controller.acceptReschedule(bookingId),
+                            onReschedule: () =>
+                                _showRescheduleModal(context, bookingId),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        16.w,
-        MediaQuery.of(context).padding.top + 18.h,
-        16.w,
-        22.h,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.actionPrimary,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32.r),
-          bottomRight: Radius.circular(32.r),
-        ),
-      ),
-      child: Row(
-        children: [
-          _HeaderCircleButton(
-            icon: Icons.arrow_back_ios_new,
-            iconSize: 18.sp,
-            onTap: () => Get.back(),
-          ),
-          Expanded(
-            child: Center(
-              child: Text(
-                'My Classes',
-                style: AppTextStyles.xl20Medium.copyWith(
-                  color: Colors.white,
-                  letterSpacing: 0,
+  Widget _buildTopGradient(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: MediaQuery.of(context).padding.top + 250.h,
+      child: IgnorePointer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFFFDADF).withValues(alpha: 0.9),
+                    const Color(0xFFFFECEE).withValues(alpha: 0.8),
+                    const Color(0xFFFFF7F5).withValues(alpha: 0.58),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                  stops: const [0, 0.46, 0.78, 1],
                 ),
               ),
             ),
-          ),
-          _HeaderCircleButton(
-            icon: Icons.add,
-            iconSize: 24.sp,
-            onTap: () {},
-          ),
-        ],
+            Positioned(
+              left: -78.w,
+              top: -38.h,
+              width: 220.w,
+              height: 220.w,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFFBECB).withValues(alpha: 0.5),
+                      const Color(0xFFFFDDE4).withValues(alpha: 0.26),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.48, 1],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -76.w,
+              top: -26.h,
+              width: 230.w,
+              height: 230.w,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFFC1CF).withValues(alpha: 0.45),
+                      const Color(0xFFFFE1E7).withValues(alpha: 0.22),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.5, 1],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -180,86 +230,19 @@ class MemberMyClassesScreen extends StatelessWidget {
     );
   }
 
-  void _showFeedbackDialog(BuildContext context) {
+  void _showFeedbackDialog(
+    BuildContext context, {
+    required String bookingId,
+    required String trainerUserId,
+    TrainerReviewModel? existingReview,
+  }) {
     showDialog(
       context: context,
-      builder: (_) => Dialog(
-        insetPadding: EdgeInsets.symmetric(horizontal: 28.w),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.r),
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 12.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'How was your workout?',
-                style: AppTextStyles.xs12SemiBold.copyWith(
-                  color: AppColors.textPrimary,
-                  letterSpacing: 0,
-                ),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                'Help us make your fitness journey even better',
-                style: AppTextStyles.xxs9Regular.copyWith(
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0,
-                ),
-              ),
-              SizedBox(height: 12.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(
-                  5,
-                  (index) => Icon(
-                    index < 2 ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: index < 2
-                        ? const Color(0xFFF5A623)
-                        : AppColors.textTertiary,
-                    size: 28.sp,
-                  ),
-                ),
-              ),
-              SizedBox(height: 12.h),
-              Container(
-                height: 74.h,
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: AppColors.borderPrimary),
-                ),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Text(
-                    'Write here...',
-                    style: AppTextStyles.xxs9Regular.copyWith(
-                      color: AppColors.textTertiary,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '0/120',
-                  style: AppTextStyles.xxs9Regular.copyWith(
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-              SizedBox(height: 10.h),
-              _SheetPrimaryButton(label: 'Post', onTap: () => Get.back()),
-            ],
-          ),
-        ),
+      builder: (_) => _TrainerReviewDialog(
+        controller: controller,
+        bookingId: bookingId,
+        trainerUserId: trainerUserId,
+        existingReview: existingReview,
       ),
     );
   }
@@ -425,37 +408,191 @@ class MemberMyClassesScreen extends StatelessWidget {
   }
 }
 
-class _HeaderCircleButton extends StatelessWidget {
-  final IconData icon;
-  final double iconSize;
-  final VoidCallback onTap;
+class _TrainerReviewDialog extends StatefulWidget {
+  final MyClassesController controller;
+  final String bookingId;
+  final String trainerUserId;
+  final TrainerReviewModel? existingReview;
 
-  const _HeaderCircleButton({
-    required this.icon,
-    required this.iconSize,
-    required this.onTap,
+  const _TrainerReviewDialog({
+    required this.controller,
+    required this.bookingId,
+    required this.trainerUserId,
+    this.existingReview,
   });
 
   @override
+  State<_TrainerReviewDialog> createState() => _TrainerReviewDialogState();
+}
+
+class _TrainerReviewDialogState extends State<_TrainerReviewDialog> {
+  static const int _maxCommentLength = 120;
+
+  late final TextEditingController _commentController;
+  late int _rating;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _commentController = TextEditingController(
+      text: widget.existingReview?.comment ?? '',
+    );
+    _rating = widget.existingReview?.rating.toInt() ?? 5;
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final comment = _commentController.text.trim();
+    if (_rating < 1 || _rating > 5) {
+      setState(() => _errorMessage = 'Please select a rating.');
+      return;
+    }
+    if (comment.isEmpty) {
+      setState(() => _errorMessage = 'Please write a short review.');
+      return;
+    }
+
+    setState(() => _errorMessage = '');
+    final posted = await widget.controller.submitTrainerReview(
+      bookingId: widget.bookingId,
+      trainerUserId: widget.trainerUserId,
+      rating: _rating,
+      comment: comment,
+    );
+    if (posted && mounted) {
+      Get.back();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 44.w,
-        height: 44.w,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8.r,
-              offset: Offset(0, 2.h),
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(horizontal: 24.w),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24.r),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 20.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'How was your workout?',
+              style: AppTextStyles.xl20SemiBold.copyWith(
+                color: AppColors.textPrimary,
+                letterSpacing: 0,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              'Help us make your fitness journey even better.',
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 0,
+              ),
+            ),
+            SizedBox(height: 24.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(
+                5,
+                (index) {
+                  final value = index + 1;
+                  final selected = value <= _rating;
+
+                  return GestureDetector(
+                    onTap: () => setState(() => _rating = value),
+                    behavior: HitTestBehavior.opaque,
+                    child: Icon(
+                      selected
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      color: selected
+                          ? const Color(0xFFFBBF24)
+                          : const Color(0xFFD1D5DB),
+                      size: 48.sp,
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: 24.h),
+            Container(
+              height: 120.h,
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: TextField(
+                controller: _commentController,
+                maxLength: _maxCommentLength,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                decoration: InputDecoration(
+                  hintText: 'Write here...',
+                  hintStyle: AppTextStyles.base16Medium.copyWith(
+                    color: const Color(0xFF9CA3AF),
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 0,
+                  ),
+                  border: InputBorder.none,
+                  counterText: '',
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: AppTextStyles.base16Medium.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${_commentController.text.length} / $_maxCommentLength',
+                style: AppTextStyles.sm14Medium.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+            if (_errorMessage.isNotEmpty) ...[
+              SizedBox(height: 8.h),
+              Text(
+                _errorMessage,
+                style: AppTextStyles.xs12Regular.copyWith(
+                  color: AppColors.statusError,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+            SizedBox(height: 24.h),
+            Obx(
+              () => _SheetPrimaryButton(
+                label: 'Post',
+                isLoading: widget.controller.isSubmittingReview.value,
+                onTap: widget.controller.isSubmittingReview.value
+                    ? null
+                    : _submit,
+              ),
             ),
           ],
         ),
-        child: Icon(icon, size: iconSize, color: Colors.black),
       ),
     );
   }
@@ -651,26 +788,23 @@ class _CardActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = schedule['status']?.toString() ?? 'Upcoming';
-    final canMarkComplete = schedule['canMarkComplete'] == true;
-    final canRequestReschedule = schedule['canRequestReschedule'] == true;
-    final canShowCheckIn = schedule['canShowCheckIn'] == true;
-    final canEnableCheckIn = schedule['canEnableCheckIn'] == true;
-    final canAcceptReschedule = schedule['canAcceptReschedule'] == true;
-    final waitingForTrainer = schedule['waitingForTrainer'] == true;
-    final isOngoing = schedule['isOngoing'] == true;
+    final showReschedule = schedule['showReschedule'] == true;
+    final showMarkAsComplete = schedule['showMarkAsComplete'] == true;
+    final showChecking = schedule['showChecking'] == true;
+    final showAcceptReschedule = schedule['showAcceptReschedule'] == true;
+    final showReview = schedule['showReview'] == true;
+    final showEditReview = schedule['showEditReview'] == true;
 
-    if (status == 'Completed') {
+    if (showReview || showEditReview) {
       return _CardButton(
-        label: 'Feedback',
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        bordered: true,
+        label: showEditReview ? 'Edit Review' : 'Review',
+        backgroundColor: AppColors.actionSecondary,
+        foregroundColor: Colors.white,
         onTap: onFeedback,
       );
     }
 
-    if (canAcceptReschedule) {
+    if (showAcceptReschedule) {
       return _CardButton(
         label: 'Accept New Time',
         backgroundColor: AppColors.actionSecondary,
@@ -680,57 +814,27 @@ class _CardActions extends StatelessWidget {
       );
     }
 
-    if (waitingForTrainer) {
+    if (showChecking) {
       return _CardButton(
-        label: 'Waiting for Trainer',
+        label: 'Checking...',
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textSecondary,
         bordered: true,
       );
     }
 
-    if (canShowCheckIn && canEnableCheckIn && canRequestReschedule) {
-      return Row(
-        children: [
-          Expanded(
-            child: _CardButton(
-              label: 'Reschedule',
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.textPrimary,
-              bordered: true,
-              onTap: isSubmitting ? null : onReschedule,
-            ),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: _CardButton(
-              label: 'Check In',
-              backgroundColor: AppColors.actionSecondary,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (canShowCheckIn && canEnableCheckIn) {
-      return _CardButton(
-        label: 'Check In',
+    if (showReschedule && showMarkAsComplete) {
+       // Should not happen based on logic but handled for safety
+       return _CardButton(
+        label: 'Mark as complete',
         backgroundColor: AppColors.actionSecondary,
         foregroundColor: Colors.white,
+        isLoading: isSubmitting,
+        onTap: isSubmitting ? null : onComplete,
       );
     }
 
-    if (isOngoing) {
-      return _CardButton(
-        label: 'Ongoing Workout...',
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textSecondary,
-        bordered: true,
-      );
-    }
-
-    if (canMarkComplete) {
+    if (showMarkAsComplete) {
       return _CardButton(
         label: 'Mark as complete',
         backgroundColor: AppColors.actionSecondary,
@@ -740,7 +844,7 @@ class _CardActions extends StatelessWidget {
       );
     }
 
-    if (canRequestReschedule) {
+    if (showReschedule) {
       return Row(
         children: [
           Expanded(
@@ -765,7 +869,6 @@ class _CardActions extends StatelessWidget {
       );
     }
 
-    // Fallback if none of the above (e.g. status is CONFIRMED but it's not yet time to complete or reschedule)
     return const SizedBox.shrink();
   }
 }
@@ -889,9 +992,14 @@ class _ModalField extends StatelessWidget {
 
 class _SheetPrimaryButton extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isLoading;
 
-  const _SheetPrimaryButton({required this.label, required this.onTap});
+  const _SheetPrimaryButton({
+    required this.label,
+    required this.onTap,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -905,13 +1013,22 @@ class _SheetPrimaryButton extends StatelessWidget {
           color: AppColors.actionSecondary,
           borderRadius: BorderRadius.circular(16.r),
         ),
-        child: Text(
-          label,
-          style: AppTextStyles.base16SemiBold.copyWith(
-            color: Colors.white,
-            letterSpacing: 0,
-          ),
-        ),
+        child: isLoading
+            ? SizedBox(
+                width: 20.w,
+                height: 20.w,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                label,
+                style: AppTextStyles.base16SemiBold.copyWith(
+                  color: Colors.white,
+                  letterSpacing: 0,
+                ),
+              ),
       ),
     );
   }

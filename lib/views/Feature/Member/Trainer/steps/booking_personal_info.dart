@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
 
 import '../../../../../controllers/member/book_trainer_controller.dart';
 import '../../../../../utils/AppColor/app_colors.dart';

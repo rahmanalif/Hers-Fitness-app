@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/core/network/api_endpoints.dart';
 import 'package:fitness/core/storage/token_storage.dart';
+import 'package:fitness/services/fcm_service.dart';
 import 'package:fitness/models/auth_response_model.dart';
 import 'package:fitness/models/member_register_payload.dart';
 import 'package:fitness/models/trainer_register_payload.dart';
@@ -55,6 +57,9 @@ class AuthService {
 
     final authResponse = _parseAuthResponse(response);
     await _saveAuthResponse(authResponse);
+
+    // Re-register FCM token after session refresh
+    unawaited(FcmService.instance.registerCurrentToken());
 
     return authResponse;
   }
@@ -226,6 +231,7 @@ class AuthService {
 
   Future<void> logout() async {
     try {
+      await FcmService.instance.deleteToken();
       await _apiClient.post(ApiEndpoints.logout);
     } finally {
       await _tokenStorage.clear();

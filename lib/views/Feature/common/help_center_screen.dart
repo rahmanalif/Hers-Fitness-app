@@ -150,7 +150,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 12.h),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.actionPrimary.withOpacity(0.5) : Colors.transparent,
+          color: isSelected ? AppColors.actionPrimary.withValues(alpha: 0.5) : Colors.transparent,
           borderRadius: BorderRadius.circular(12.r),
         ),
         child: Center(
@@ -173,7 +173,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           controller: _searchController,
           hintText: "Search our FAQ...",
           suffixIcon: const Icon(Icons.search, color: Colors.black),
-          borderColor: AppColors.actionPrimary.withOpacity(0.3),
+          borderColor: AppColors.actionPrimary.withValues(alpha: 0.3),
         ),
         SizedBox(height: 24.h),
         ..._faqItems.asMap().entries.map((entry) {
@@ -204,7 +204,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           boxShadow: [
             if (!isExpanded)
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -228,7 +228,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                 Container(
                   padding: EdgeInsets.all(4.w),
                   decoration: BoxDecoration(
-                    color: isExpanded ? AppColors.actionPrimary.withOpacity(0.8) : Colors.white,
+                    color: isExpanded ? AppColors.actionPrimary.withValues(alpha: 0.8) : Colors.white,
                     shape: BoxShape.rectangle,
                     borderRadius: BorderRadius.circular(8.r),
                     border: isExpanded ? null : Border.all(color: Colors.grey.shade200),
@@ -246,7 +246,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
               AppText(
                 item["answer"],
                 style: AppTextStyles.sm14Regular.copyWith(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   height: 1.5,
                 ),
               ),
@@ -266,7 +266,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           CustomTextField(
             controller: _problemController,
             hintText: "Tell us your problame...", // following typo in screenshot
-            borderColor: AppColors.actionPrimary.withOpacity(0.3),
+            borderColor: AppColors.actionPrimary.withValues(alpha: 0.3),
           ),
           SizedBox(height: 20.h),
           Container(

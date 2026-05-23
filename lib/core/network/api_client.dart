@@ -75,6 +75,16 @@ class ApiClient {
     );
   }
 
+  Future<dynamic> deleteWithBody(String endpoint, {Map<String, dynamic>? body}) async {
+    return _send(
+      () async => _httpClient.delete(
+        _buildUri(endpoint),
+        headers: await _headers(),
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      ),
+    );
+  }
+
   Future<dynamic> multipartPost({
     required String endpoint,
     required Map<String, String> fields,

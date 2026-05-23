@@ -7,8 +7,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class NextClassCard extends StatelessWidget {
   final Map<String, dynamic> classData;
   final VoidCallback onTap;
+  final String? imageUrl;
 
-  const NextClassCard({super.key, required this.classData, required this.onTap});
+  const NextClassCard({
+    super.key,
+    required this.classData,
+    required this.onTap,
+    this.imageUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,10 +25,17 @@ class NextClassCard extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32.r),
-          image: const DecorationImage(
-            image: NetworkImage("https://eu.manduka.com/cdn/shop/articles/yogday.jpg?v=1718901651"),
-            fit: BoxFit.cover,
-          ),
+          color: const Color(0xFF2C2C2C),
+          image: (imageUrl != null && imageUrl!.isNotEmpty)
+              ? DecorationImage(
+                  image: NetworkImage(imageUrl!),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.15),
+                    BlendMode.darken,
+                  ),
+                )
+              : null,
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -31,8 +44,8 @@ class NextClassCard extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(0.1),
-                Colors.black.withOpacity(0.6),
+                Colors.black.withValues(alpha: 0.1),
+                Colors.black.withValues(alpha: 0.6),
               ],
             ).toLinearGradient(),
           ),
@@ -76,7 +89,7 @@ class NextClassCard extends StatelessWidget {
                         AppText(
                           classData["series"] ?? "5 Series Workout",
                           style: AppTextStyles.sm14Medium.copyWith(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -117,9 +130,9 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.25),
+        color: Colors.white.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

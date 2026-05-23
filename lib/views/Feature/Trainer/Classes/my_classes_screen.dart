@@ -4,6 +4,7 @@ import 'package:fitness/models/trainer_availability_model.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:fitness/views/Base/AppText/appText.dart';
+import 'package:fitness/views/Base/CustomAppbar/custom_appbar.dart';
 import 'package:fitness/views/Feature/Trainer/Classes/widgets/class_card.dart';
 import 'package:fitness/views/Feature/Trainer/Classes/widgets/class_type_bottom_sheet.dart';
 import 'package:fitness/views/Feature/Trainer/Classes/widgets/delete_class_dialog.dart';
@@ -62,22 +63,127 @@ class MyClassesScreen extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: AppColors.bgPrimary,
-        body: Column(
+        body: Stack(
           children: [
-            _buildHeader(context),
-            _buildSectionSwitcher(),
-            Expanded(
-              child: Obx(() {
-                if (controller.selectedSection.value ==
-                    MyClassesSection.availability) {
-                  return _buildAvailabilityView();
-                }
+            _buildTopGradient(context),
+            SafeArea(
+              child: Column(
+                children: [
+                  SizedBox(height: 16.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: CustomAppbar(
+                      title: "My Classes",
+                      onTap: () => Get.offAllNamed(AppRoutes.trainerBottomNavScreen),
+                      trailing: _buildAddButton(context),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  _buildSectionSwitcher(),
+                  Expanded(
+                    child: Obx(() {
+                      if (controller.selectedSection.value ==
+                          MyClassesSection.availability) {
+                        return _buildAvailabilityView();
+                      }
 
-                return _buildClassesList(context);
-              }),
+                      return _buildClassesList(context);
+                    }),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopGradient(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: MediaQuery.of(context).padding.top + 250.h,
+      child: IgnorePointer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFFFDADF).withValues(alpha: 0.9),
+                    const Color(0xFFFFECEE).withValues(alpha: 0.8),
+                    const Color(0xFFFFF7F5).withValues(alpha: 0.58),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                  stops: const [0, 0.46, 0.78, 1],
+                ),
+              ),
+            ),
+            Positioned(
+              left: -78.w,
+              top: -38.h,
+              width: 220.w,
+              height: 220.w,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFFBECB).withValues(alpha: 0.5),
+                      const Color(0xFFFFDDE4).withValues(alpha: 0.26),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.48, 1],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -76.w,
+              top: -26.h,
+              width: 230.w,
+              height: 230.w,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFFC1CF).withValues(alpha: 0.45),
+                      const Color(0xFFFFE1E7).withValues(alpha: 0.22),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.5, 1],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openCreateSheet(context),
+      child: Container(
+        width: 44.w,
+        height: 44.w,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8.r,
+              offset: Offset(0, 2.h),
+            ),
+          ],
+        ),
+        child: Icon(Icons.add, size: 24.sp, color: Colors.black),
       ),
     );
   }
@@ -204,64 +310,6 @@ class MyClassesScreen extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 16.h,
-        bottom: 20.h,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.actionPrimary,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30.r),
-          bottomRight: Radius.circular(30.r),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            GestureDetector(
-              onTap: () => Get.offAllNamed(AppRoutes.trainerBottomNavScreen),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: 48.w,
-                height: 48.w,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: const Center(
-                  child: Icon(Icons.arrow_back_ios_new, size: 20),
-                ),
-              ),
-            ),
-            AppText(
-              "My Classes",
-              style: AppTextStyles.xl20Medium.copyWith(color: Colors.white),
-            ),
-            GestureDetector(
-              onTap: () => _openCreateSheet(context),
-              child: Container(
-                width: 48.w,
-                height: 48.w,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: const Center(
-                  child: Icon(Icons.add, size: 28, color: Colors.black),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

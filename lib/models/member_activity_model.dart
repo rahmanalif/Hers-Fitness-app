@@ -159,6 +159,62 @@ class MemberWeeklyActivityItem {
   }
 }
 
+class MemberYearlyActivityModel {
+  final int totalCompletedSessions;
+  final int maxYearlyCompletedSessions;
+  final List<MemberYearlyActivityItem> years;
+
+  const MemberYearlyActivityModel({
+    required this.totalCompletedSessions,
+    required this.maxYearlyCompletedSessions,
+    required this.years,
+  });
+
+  factory MemberYearlyActivityModel.fromJson(Map<String, dynamic> json) {
+    final data = _object(json['data']) ?? json;
+    return MemberYearlyActivityModel(
+      totalCompletedSessions: _readInt(data, const ['totalCompletedSessions']) ?? 0,
+      maxYearlyCompletedSessions: _readInt(data, const ['maxYearlyCompletedSessions']) ?? 0,
+      years: _readList(data, const ['years'])
+          .map((item) => MemberYearlyActivityItem.fromJson(_object(item) ?? {}))
+          .toList(),
+    );
+  }
+
+  static MemberYearlyActivityModel empty() {
+    final currentYear = DateTime.now().year;
+    return MemberYearlyActivityModel(
+      totalCompletedSessions: 0,
+      maxYearlyCompletedSessions: 0,
+      years: [
+        MemberYearlyActivityItem(year: currentYear - 2, completedSessions: 0, activityPercentage: 0),
+        MemberYearlyActivityItem(year: currentYear - 1, completedSessions: 0, activityPercentage: 0),
+        MemberYearlyActivityItem(year: currentYear, completedSessions: 0, activityPercentage: 0),
+      ],
+    );
+  }
+}
+
+class MemberYearlyActivityItem {
+  final int year;
+  final int completedSessions;
+  final int activityPercentage;
+
+  const MemberYearlyActivityItem({
+    required this.year,
+    required this.completedSessions,
+    required this.activityPercentage,
+  });
+
+  factory MemberYearlyActivityItem.fromJson(Map<String, dynamic> json) {
+    return MemberYearlyActivityItem(
+      year: _readInt(json, const ['year']) ?? DateTime.now().year,
+      completedSessions: _readInt(json, const ['completedSessions']) ?? 0,
+      activityPercentage: _readInt(json, const ['activityPercentage']) ?? 0,
+    );
+  }
+}
+
 Map<String, dynamic>? _object(dynamic value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {

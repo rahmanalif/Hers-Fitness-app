@@ -16,13 +16,29 @@ class ApiEndpoints {
   static const currentUser = '/api/users/me';
   static const memberWeeklyActivity = '/api/users/member/weekly-activity';
   static const memberMonthlyActivity = '/api/users/member/monthly-activity';
+  static const memberYearlyActivity = '/api/users/member/yearly-activity';
   static const memberAssessment = '/api/users/member-assessment';
+  static const memberUpdateProfile = '/api/users/member/profile';
+  static const memberProfileImages = '/api/users/member/profile/images';
+  static const memberTransactions = '/api/users/member/transactions';
+  static const memberReferral = '/api/users/member/referral';
+  static const memberAccount = '/api/users/member/account';
+  static String staticContent(String key) => '/api/static-content/$key';
   static const trainerClasses = '/api/trainer/classes';
+  static const trainerDashboardStats = '/api/trainer/dashboard/stats';
+  static const trainerNextClass = '/api/trainer/classes/next';
   static String trainerClassById(String id) => '/api/trainer/classes/$id';
   static String trainerClassReschedule(String id) =>
       '/api/trainer/classes/$id/reschedule';
+  static const trainerSchedule = '/api/trainer/schedule';
+  static String trainerBookingCheckIn(String id) =>
+      '/api/trainer/bookings/$id/check-in';
   static String trainerBookingComplete(String id) =>
       '/api/trainer/bookings/$id/complete';
+  static String trainerBookingReschedule(String id) =>
+      '/api/trainer/bookings/$id/reschedule';
+  static String trainerBookingRescheduleAccept(String id) =>
+      '/api/trainer/bookings/$id/reschedule/accept';
   static const memberClasses = '/api/member/classes';
   static String memberClassBookings(String id) =>
       '/api/member/classes/$id/bookings';
@@ -72,6 +88,7 @@ class ApiEndpoints {
   static const notificationTestPush = '/api/notifications/test-push';
   static String trainerReviews(String trainerUserId) =>
       '/api/reviews/trainers/$trainerUserId';
+  static const memberTrainerReviews = '/api/reviews/member/trainer-reviews';
   static const countries = '/api/countries';
   static String countryByIso3(String codeIso3) =>
       '/api/countries/code-iso3/$codeIso3';

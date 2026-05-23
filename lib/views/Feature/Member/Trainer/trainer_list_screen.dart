@@ -40,6 +40,7 @@ class TrainerListScreen extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: CustomAppbar(
                     title: "Trainer",
+                    onTap: () => Get.offAllNamed(AppRoutes.memberBottomNavScreen),
                     trailing: _buildHeaderBookmarkButton(),
                   ),
                 ),
@@ -486,9 +487,6 @@ class TrainerListScreen extends StatelessWidget {
       reviewCount: trainer['reviewCount'] is num
           ? (trainer['reviewCount'] as num).toInt()
           : null,
-      isActiveNow:
-          trainer['locationLabel'] == 'Active Now' ||
-          trainer['isActiveNow'] == true,
       onTap: () {
         Get.toNamed(
           AppRoutes.trainerDetailsScreen,

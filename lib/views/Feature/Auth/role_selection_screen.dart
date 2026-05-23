@@ -33,8 +33,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 center: Alignment(1.0, -1.0),
                 radius: 2.5,
                 colors: [
-                  const Color(0xFFFFA6B4).withOpacity(0.5),
-                  const Color(0xFFFFE0B9).withOpacity(0.25),
+                  const Color(0xFFFFA6B4).withValues(alpha: 0.5),
+                  const Color(0xFFFFE0B9).withValues(alpha: 0.25),
                   Colors.white,
                 ],
                 stops: const [0.0, 0.7, 1.0],
@@ -124,7 +124,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               : Border.all(color: Colors.transparent),
           boxShadow: [
             BoxShadow(
-              color: Color(0xFFF7869A).withOpacity(0.15),
+              color: Color(0xFFF7869A).withValues(alpha: 0.15),
               blurRadius: 12,
               offset: Offset(0, 6),
             ),

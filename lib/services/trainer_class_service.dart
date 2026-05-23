@@ -17,6 +17,36 @@ class TrainerClassService {
         .toList();
   }
 
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    final response = await _apiClient.get(ApiEndpoints.trainerDashboardStats);
+    if (response is! Map<String, dynamic>) {
+      throw const ApiException('Invalid server response');
+    }
+    final data = response['data'];
+    if (data is Map<String, dynamic>) return data;
+    return const {};
+  }
+
+  Future<TrainerClassModel?> getNextClass() async {
+    final response = await _apiClient.get(ApiEndpoints.trainerNextClass);
+    if (response is! Map<String, dynamic>) return null;
+    final data = response['data'];
+    if (data == null) return null;
+    if (data is Map<String, dynamic>) return TrainerClassModel.fromJson(data);
+    return null;
+  }
+
+  Future<List<TrainerClassModel>> getTodayClasses(String date) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.trainerClasses,
+      queryParameters: {'date': date},
+    );
+    return _extractList(response)
+        .whereType<Map<String, dynamic>>()
+        .map(TrainerClassModel.fromJson)
+        .toList();
+  }
+
   Future<TrainerClassModel> getClassById(String id) async {
     final response = await _apiClient.get(ApiEndpoints.trainerClassById(id));
     final data = _extractObjectOrNull(response);
@@ -86,6 +116,10 @@ class TrainerClassService {
 
   Future<void> completeBooking(String bookingId) async {
     await _apiClient.patch(ApiEndpoints.trainerBookingComplete(bookingId));
+  }
+
+  Future<void> acceptReschedule(String bookingId) async {
+    await _apiClient.patch(ApiEndpoints.trainerBookingRescheduleAccept(bookingId));
   }
 
   Future<void> deleteClass(String id) async {

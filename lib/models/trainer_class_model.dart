@@ -115,6 +115,7 @@ class TrainerClassModel {
   final String sessionFormat;
   final int capacity;
   final List<AvailabilitySlotModel> availableSlots;
+  final String? imageUrl;
 
   const TrainerClassModel({
     this.id,
@@ -125,6 +126,7 @@ class TrainerClassModel {
     required this.sessionFormat,
     required this.capacity,
     required this.availableSlots,
+    this.imageUrl,
   });
 
   factory TrainerClassModel.fromJson(Map<String, dynamic> json) {
@@ -159,6 +161,12 @@ class TrainerClassModel {
           .whereType<Map<String, dynamic>>()
           .map(AvailabilitySlotModel.fromJson)
           .toList(),
+      imageUrl: _readString(json, const [
+        'imageUrl',
+        'image_url',
+        'trainerImageUrl',
+        'trainer_image_url',
+      ]),
     );
   }
 
@@ -181,6 +189,7 @@ class TrainerClassModel {
       'apiSessionFormat': sessionFormat,
       'availableSlots': availableSlots.map((slot) => slot.toJson()).toList(),
       'series': displaySessionFormat,
+      'imageUrl': imageUrl ?? '',
     };
   }
 

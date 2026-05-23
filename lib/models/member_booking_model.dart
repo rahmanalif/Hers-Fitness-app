@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 class MemberBookingModel {
   final String id;
   final String title;
+  final String? trainerUserId;
   final String trainerName;
   final String scheduledDate;
   final String startTime;
@@ -21,10 +22,12 @@ class MemberBookingModel {
   final String? trainerCompletedAt;
   final String? completedAt;
   final String? totalAmount;
+  final String? classStatus;
 
   const MemberBookingModel({
     required this.id,
     required this.title,
+    this.trainerUserId,
     required this.trainerName,
     required this.scheduledDate,
     required this.startTime,
@@ -42,6 +45,7 @@ class MemberBookingModel {
     this.trainerCompletedAt,
     this.completedAt,
     this.totalAmount,
+    this.classStatus,
   });
 
   factory MemberBookingModel.fromJson(Map<String, dynamic> json) {
@@ -61,6 +65,20 @@ class MemberBookingModel {
       title: _readString(klass, const ['title', 'name', 'className']) ??
           _readString(json, const ['title', 'className', 'class_name']) ??
           'Back Workout',
+      trainerUserId: _readString(json, const [
+            'trainerUserId',
+            'trainer_user_id',
+            'trainerId',
+            'trainer_id',
+          ]) ??
+          _readString(trainer, const [
+            'userId',
+            'user_id',
+            'trainerUserId',
+            'trainer_user_id',
+            'id',
+          ]) ??
+          '',
       trainerName: _displayName(trainer) ??
           _readString(json, const ['trainerName', 'trainer_name']) ??
           'Trainer',
@@ -111,8 +129,8 @@ class MemberBookingModel {
             'end_at',
           ]) ??
           _readString(_object(json['location_time']) ?? const <String, dynamic>{}, const [
-            'endAt',
-            'end_at',
+            'startAt',
+            'start_at',
           ]),
       classType: _readString(json, const ['classType', 'class_type']) ??
           _readString(klass, const ['classType', 'class_type']),
@@ -141,6 +159,7 @@ class MemberBookingModel {
       ]),
       completedAt: _readString(json, const ['completedAt', 'completed_at']),
       totalAmount: _readString(json, const ['totalAmount', 'total_amount']),
+      classStatus: _readString(klass, const ['status', 'classStatus', 'class_status']),
     );
   }
 
@@ -197,6 +216,7 @@ class MemberBookingModel {
     return {
       'id': id,
       'title': title,
+      'trainerUserId': trainerUserId ?? '',
       'trainer': trainerName,
       'date': _displayDate(scheduledDate),
       'time': _displayTime(startTime),

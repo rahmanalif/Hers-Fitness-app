@@ -2,7 +2,7 @@ class AppConstants {
   //-------------- base url set here ---------------------//
 
   static const String BASE_URL =
-      "https://deutsch-forests-participants-housing.trycloudflare.com";
+      "https://hersfitness.okaybro.online";
 
   static const String APP_NAME = 'DefaultAppName';
   static const String Publishable_key = '';

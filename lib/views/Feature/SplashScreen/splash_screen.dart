@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fitness/Helpers/route.dart';
 import 'package:fitness/core/storage/token_storage.dart';
+import 'package:fitness/services/fcm_service.dart';
 import 'package:get/get.dart';
 import '../../../../utils/AppColor/app_colors.dart';
 
@@ -32,6 +33,9 @@ class _SplashScreenState extends State<SplashScreen> {
       Get.offAllNamed(AppRoutes.welcomeScreen);
       return;
     }
+
+    // Register FCM token on app restore
+    await FcmService.instance.registerCurrentToken();
 
     if (role == 'trainer') {
       Get.offAllNamed(AppRoutes.trainerBottomNavScreen);

@@ -4,7 +4,7 @@ import 'package:fitness/core/storage/token_storage.dart';
 import 'package:fitness/models/app_notification_model.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
-import 'package:fitness/views/Base/AppText/appText.dart';
+import 'package:fitness/views/Base/CustomAppbar/custom_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -25,150 +25,175 @@ class NotificationScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: Column(
+      body: Stack(
         children: [
-          _buildHeader(context, controller),
-          Expanded(
-            child: Obx(() {
-              if (controller.isLoading.value &&
-                  controller.notifications.isEmpty) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.actionPrimary,
-                  ),
-                );
-              }
-
-              if (controller.notifications.isEmpty) {
-                return RefreshIndicator(
-                  onRefresh: () =>
-                      controller.fetchNotifications(showError: true),
-                  child: ListView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.w,
-                      vertical: 96.h,
-                    ),
-                    children: [
-                      Icon(
-                        Icons.notifications_none_rounded,
-                        color: AppColors.textTertiary,
-                        size: 46.sp,
-                      ),
-                      SizedBox(height: 12.h),
-                      Text(
-                        controller.errorMessage.value.isNotEmpty
-                            ? controller.errorMessage.value
-                            : 'No notifications yet.',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.sm14Medium.copyWith(
-                          color: AppColors.textSecondary,
+          _buildTopGradient(context),
+          SafeArea(
+            child: Column(
+              children: [
+                SizedBox(height: 16.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: CustomAppbar(
+                    title: "Notification",
+                    onTap: () => _goBack(context),
+                    trailing: Obx(() {
+                      final hasNotifications = controller.notifications.isNotEmpty;
+                      return PopupMenuButton<String>(
+                        enabled: hasNotifications,
+                        color: Colors.white,
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          color: hasNotifications
+                              ? AppColors.textPrimary
+                              : AppColors.textTertiary,
                         ),
-                      ),
-                    ],
+                        onSelected: (value) {
+                          if (value == 'read_all') controller.markAllAsRead();
+                          if (value == 'clear_all') controller.deleteAllNotifications();
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'read_all', child: Text('Mark all read')),
+                          PopupMenuItem(value: 'clear_all', child: Text('Clear all')),
+                        ],
+                      );
+                    }),
                   ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: () => controller.fetchNotifications(showError: true),
-                child: ListView.builder(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 20.w,
-                    vertical: 24.h,
-                  ),
-                  itemCount: controller.notifications.length,
-                  itemBuilder: (context, index) {
-                    final notification = controller.notifications[index];
-                    return _NotificationCard(
-                      notification: notification,
-                      onTap: () => controller.openNotification(notification),
-                      onDelete: () =>
-                          controller.deleteNotification(notification.id),
-                    );
-                  },
                 ),
-              );
-            }),
+                SizedBox(height: 24.h),
+                Expanded(
+                  child: Obx(() {
+                    if (controller.isLoading.value &&
+                        controller.notifications.isEmpty) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.actionPrimary,
+                        ),
+                      );
+                    }
+
+                    if (controller.notifications.isEmpty) {
+                      return RefreshIndicator(
+                        onRefresh: () =>
+                            controller.fetchNotifications(showError: true),
+                        child: ListView(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20.w,
+                            vertical: 96.h,
+                          ),
+                          children: [
+                            Icon(
+                              Icons.notifications_none_rounded,
+                              color: AppColors.textTertiary,
+                              size: 46.sp,
+                            ),
+                            SizedBox(height: 12.h),
+                            Text(
+                              controller.errorMessage.value.isNotEmpty
+                                  ? controller.errorMessage.value
+                                  : 'No notifications yet.',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.sm14Medium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return RefreshIndicator(
+                      onRefresh: () => controller.fetchNotifications(showError: true),
+                      child: ListView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20.w,
+                          vertical: 24.h,
+                        ),
+                        itemCount: controller.notifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = controller.notifications[index];
+                          return _NotificationCard(
+                            notification: notification,
+                            onTap: () => controller.openNotification(notification),
+                            onDelete: () =>
+                                controller.deleteNotification(notification.id),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(
-    BuildContext context,
-    MemberNotificationController controller,
-  ) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        20.w,
-        MediaQuery.of(context).padding.top + 16.h,
-        20.w,
-        24.h,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.actionPrimary,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32.r),
-          bottomRight: Radius.circular(32.r),
+  Widget _buildTopGradient(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: MediaQuery.of(context).padding.top + 250.h,
+      child: IgnorePointer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFFFDADF).withValues(alpha: 0.9),
+                    const Color(0xFFFFECEE).withValues(alpha: 0.8),
+                    const Color(0xFFFFF7F5).withValues(alpha: 0.58),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                  stops: const [0, 0.46, 0.78, 1],
+                ),
+              ),
+            ),
+            Positioned(
+              left: -78.w,
+              top: -38.h,
+              width: 220.w,
+              height: 220.w,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFFBECB).withValues(alpha: 0.5),
+                      const Color(0xFFFFDDE4).withValues(alpha: 0.26),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.48, 1],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -76.w,
+              top: -26.h,
+              width: 230.w,
+              height: 230.w,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFFC1CF).withValues(alpha: 0.45),
+                      const Color(0xFFFFE1E7).withValues(alpha: 0.22),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.5, 1],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () {
-              _goBack(context);
-            },
-            child: Container(
-              width: 44.w,
-              height: 44.w,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 20,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: AppText(
-                "Notification",
-                style: AppTextStyles.base16SemiBold.copyWith(
-                  color: Colors.white,
-                  fontSize: 20.sp,
-                ),
-              ),
-            ),
-          ),
-          Obx(() {
-            final hasNotifications = controller.notifications.isNotEmpty;
-            return PopupMenuButton<String>(
-              enabled: hasNotifications,
-              color: Colors.white,
-              icon: Icon(
-                Icons.more_vert_rounded,
-                color: hasNotifications
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.45),
-              ),
-              onSelected: (value) {
-                if (value == 'read_all') controller.markAllAsRead();
-                if (value == 'clear_all') controller.deleteAllNotifications();
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'read_all', child: Text('Mark all read')),
-                PopupMenuItem(value: 'clear_all', child: Text('Clear all')),
-              ],
-            );
-          }),
-        ],
       ),
     );
   }

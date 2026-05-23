@@ -11,12 +11,26 @@ class NotificationService {
   Future<void> registerDeviceToken({
     required String token,
     required String platform,
+    String? deviceId,
   }) async {
     if (token.trim().isEmpty) return;
 
     await _apiClient.post(
       ApiEndpoints.notificationDeviceTokens,
-      body: {'token': token.trim(), 'platform': platform.toUpperCase()},
+      body: {
+        'token': token.trim(),
+        'platform': platform.toUpperCase(),
+        if (deviceId != null && deviceId.isNotEmpty) 'deviceId': deviceId,
+      },
+    );
+  }
+
+  Future<void> unregisterDeviceToken({required String token}) async {
+    if (token.trim().isEmpty) return;
+
+    await _apiClient.deleteWithBody(
+      ApiEndpoints.notificationDeviceTokens,
+      body: {'token': token.trim()},
     );
   }
 

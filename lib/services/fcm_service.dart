@@ -74,10 +74,24 @@ class FcmService {
     final role = (await _tokenStorage.getUserRole())?.toLowerCase();
     if (role != 'member' && role != 'trainer') return;
 
+    final deviceId = await _tokenStorage.getClientId();
+
     await _notificationService.registerDeviceToken(
       token: token,
       platform: Platform.isIOS ? 'IOS' : 'ANDROID',
+      deviceId: deviceId,
     );
+  }
+
+  Future<void> deleteToken() async {
+    try {
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _notificationService.unregisterDeviceToken(token: token);
+      }
+    } catch (_) {
+      // Ignore token deletion errors on logout
+    }
   }
 
   Future<void> navigateFromNotificationData({
@@ -102,7 +116,7 @@ class FcmService {
         return;
       case 'TRAINER_REVIEW_RECEIVED':
         if (isTrainer) {
-          Get.toNamed(AppRoutes.trainerProfileScreen, arguments: data);
+          Get.toNamed(AppRoutes.trainerReviewsScreen, arguments: data);
         } else {
           Get.toNamed(AppRoutes.notificationScreen);
         }

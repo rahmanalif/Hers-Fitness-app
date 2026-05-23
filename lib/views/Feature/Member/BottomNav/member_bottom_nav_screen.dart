@@ -7,7 +7,6 @@ import 'package:fitness/views/Feature/common/chat/messages_list_screen.dart';
 import '../../../../utils/AppColor/app_colors.dart';
 import '../Profile/member_profile_screen.dart';
 
-
 class MemberBottomNavScreen extends StatefulWidget {
   final int initialIndex;
   const MemberBottomNavScreen({super.key, this.initialIndex = 0});
@@ -44,7 +43,6 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
     });
   }
 
-  // Finalized pages for navigation
   final List<Widget> _pages = [
     MemberHomeScreen(),
     TrainerListScreen(),
@@ -65,7 +63,7 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
         backgroundColor: AppColors.actionPrimary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: () => _onItemTapped(2),
-        child: const Icon(Icons.event_available, color: Colors.white, size: 28),
+        child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 28),
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
@@ -74,7 +72,7 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
             borderRadius: BorderRadius.circular(35),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.19),
+                color: Colors.black.withValues(alpha: 0.19),
                 blurRadius: 50,
                 spreadRadius: 4,
                 offset: const Offset(0, 10),
@@ -94,7 +92,7 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildNavItem(icon: Icons.home_filled, index: 0),
-                    _buildNavItem(icon: Icons.fitness_center_rounded, index: 1),
+                    _buildNavItem(icon: Icons.search_rounded, index: 1),
                     SizedBox(width: 48.w),
                     _buildNavItem(icon: Icons.chat_bubble_rounded, index: 3),
                     _buildNavItem(icon: Icons.person_rounded, index: 4),
@@ -117,7 +115,7 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
         width: 60.w,
         height: 60.h,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.actionPrimary.withOpacity(0.08) : Colors.transparent,
+          color: isSelected ? AppColors.actionPrimary.withValues(alpha: 0.08) : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
         ),
         child: Stack(

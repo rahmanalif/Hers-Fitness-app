@@ -88,11 +88,7 @@ bool canShowTrainerComplete(dynamic booking) {
   return _isPaid(booking) &&
       (status == 'CONFIRMED' ||
           status == 'RESCHEDULED' ||
-          (status == 'COMPLETED' &&
-              _isBlank(_readString(booking, const [
-                'completedAt',
-                'completed_at',
-              ])))) &&
+          status == 'COMPLETED') &&
       endAt != null &&
       !DateTime.now().isBefore(endAt) &&
       !_isBlank(_readString(booking, const [
@@ -104,6 +100,52 @@ bool canShowTrainerComplete(dynamic booking) {
         'trainer_completed_at',
       ])) &&
       _isBlank(_readString(booking, const ['completedAt', 'completed_at']));
+}
+
+bool canShowTrainerChecking(dynamic booking, String? currentTrainerUserId) {
+  if (!_isPaid(booking)) return false;
+
+  final status = _bookingStatus(booking);
+  final endAt = getBookingEndAt(booking);
+  final memberCompleted = !_isBlank(_readString(booking, const [
+    'memberCompletedAt',
+    'member_completed_at',
+  ]));
+  final completed = !_isBlank(_readString(booking, const ['completedAt', 'completed_at']));
+
+  // Waiting for member to mark complete
+  final waitingForCompletion =
+      endAt != null &&
+      !DateTime.now().isBefore(endAt) &&
+      !memberCompleted &&
+      (status == 'CONFIRMED' || status == 'RESCHEDULED') &&
+      !completed;
+
+  // Waiting for member to approve trainer's reschedule request
+  final requesterId = _readString(booking, const [
+    'rescheduleRequestedByUserId',
+    'reschedule_requested_by_user_id',
+  ]);
+  final waitingForReschedule =
+      (status == 'RESCHEDULE_REQUESTED' || status == 'RESCHEDULE_PENDING') &&
+      requesterId != null &&
+      requesterId == currentTrainerUserId;
+
+  return waitingForCompletion || waitingForReschedule;
+}
+
+bool canShowTrainerAcceptReschedule(dynamic booking, String? currentTrainerUserId) {
+  if (!_isPaid(booking)) return false;
+
+  final status = _bookingStatus(booking);
+  final requesterId = _readString(booking, const [
+    'rescheduleRequestedByUserId',
+    'reschedule_requested_by_user_id',
+  ]);
+
+  return (status == 'RESCHEDULE_REQUESTED' || status == 'RESCHEDULE_PENDING') &&
+      requesterId != null &&
+      requesterId != currentTrainerUserId;
 }
 
 bool canShowTrainerWaitingForMember(dynamic booking) {

@@ -70,8 +70,8 @@ class _AssessmentNumberTwoScreenState extends State<AssessmentNumberTwoScreen> {
                 center: const Alignment(1.0, -1.0),
                 radius: 2.5,
                 colors: [
-                  const Color(0xFFFFA6B4).withOpacity(0.5),
-                  const Color(0xFFFFE0B9).withOpacity(0.25),
+                  const Color(0xFFFFA6B4).withValues(alpha: 0.5),
+                  const Color(0xFFFFE0B9).withValues(alpha: 0.25),
                   Colors.white,
                 ],
                 stops: const [0.0, 0.7, 1.0],
@@ -207,7 +207,7 @@ class _AssessmentNumberTwoScreenState extends State<AssessmentNumberTwoScreen> {
                             borderRadius: BorderRadius.circular(10.r),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.actionPrimary.withOpacity(0.3),
+                                color: AppColors.actionPrimary.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),

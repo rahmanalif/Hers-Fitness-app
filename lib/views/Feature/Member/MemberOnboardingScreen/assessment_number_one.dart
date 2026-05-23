@@ -37,8 +37,8 @@ class AssessmentNumberOneScreen extends StatelessWidget {
                 center: const Alignment(1.0, -1.0),
                 radius: 2.5,
                 colors: [
-                  const Color(0xFFFFA6B4).withOpacity(0.5),
-                  const Color(0xFFFFE0B9).withOpacity(0.25),
+                  const Color(0xFFFFA6B4).withValues(alpha: 0.5),
+                  const Color(0xFFFFE0B9).withValues(alpha: 0.25),
                   Colors.white,
                 ],
                 stops: const [0.0, 0.7, 1.0],
@@ -84,7 +84,7 @@ class AssessmentNumberOneScreen extends StatelessWidget {
                               color: isSelected ? AppColors.actionPrimary : AppColors.bgTertiary,
                               borderRadius: BorderRadius.circular(16.r),
                               border: Border.all(
-                                color: isSelected ? Colors.transparent : AppColors.actionPrimary.withOpacity(.25),
+                                color: isSelected ? Colors.transparent : AppColors.actionPrimary.withValues(alpha: .25),
                               ),
                               boxShadow: isSelected ? [
                                 BoxShadow(

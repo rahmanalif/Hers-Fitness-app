@@ -16,6 +16,11 @@ class UserProfileModel {
   final String? location;
   final String? bio;
   final String? accountStatus;
+  final int? age;
+  final double? weight;
+  final String? weightUnit;
+  final String? dietPreference;
+  final String? coverPhotoUrl;
 
   const UserProfileModel({
     this.id,
@@ -32,6 +37,11 @@ class UserProfileModel {
     this.location,
     this.bio,
     this.accountStatus,
+    this.age,
+    this.weight,
+    this.weightUnit,
+    this.dietPreference,
+    this.coverPhotoUrl,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -111,6 +121,18 @@ class UserProfileModel {
             'approval_status',
             'status',
           ]),
+      age: _readInt(source, const ['age']) ?? _readInt(profile, const ['age']),
+      weight: _readDouble(source, const ['weight']) ?? _readDouble(profile, const ['weight']),
+      weightUnit:
+          _readString(source, const ['weightUnit', 'weight_unit']) ??
+          _readString(profile, const ['weightUnit', 'weight_unit']),
+      dietPreference:
+          _readString(source, const ['dietPreference', 'diet_preference']) ??
+          _readString(profile, const ['dietPreference', 'diet_preference']),
+      coverPhotoUrl: _normalizeCoverUrl(
+        _readString(source, const ['coverPhotoUrl', 'cover_photo_url', 'coverPhoto']) ??
+        _readString(profile, const ['coverPhotoUrl', 'cover_photo_url', 'coverPhoto']),
+      ),
     );
   }
 
@@ -224,6 +246,23 @@ class UserProfileModel {
         _readNestedImageUrl(source) ?? _readNestedImageUrl(profile);
 
     return normalizeImageUrl(directValue ?? nestedValue);
+  }
+
+  static int? _readInt(Map<String, dynamic> json, List<String> keys) {
+    final value = _readString(json, keys);
+    if (value == null) return null;
+    return int.tryParse(value) ?? double.tryParse(value)?.round();
+  }
+
+  static double? _readDouble(Map<String, dynamic> json, List<String> keys) {
+    final value = _readString(json, keys);
+    if (value == null) return null;
+    return double.tryParse(value);
+  }
+
+  static String? _normalizeCoverUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+    return normalizeImageUrl(url);
   }
 
   static String? _readNestedImageUrl(Map<String, dynamic> json) {

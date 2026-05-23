@@ -98,11 +98,11 @@ class TrainerReviewsScreen extends StatelessWidget {
                       return Padding(
                         padding: EdgeInsets.only(bottom: 12.h),
                         child: ReviewCard(
-                          name: review["name"]!,
-                          rating: review["rating"]!,
-                          timeAgo: review["time"]!,
-                          reviewText: review["text"]!,
-                          imageUrl: review["image"]!,
+                          name: review["name"] ?? 'Member',
+                          rating: review["rating"] ?? '0.0',
+                          timeAgo: review["time"] ?? '',
+                          reviewText: review["text"] ?? '',
+                          imageUrl: review["image"] ?? '',
                         ),
                       );
                     },

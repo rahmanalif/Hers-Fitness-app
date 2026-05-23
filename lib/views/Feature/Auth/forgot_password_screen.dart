@@ -25,8 +25,8 @@ class ForgotPasswordScreen extends StatelessWidget {
                 center: const Alignment(1.0, -1.0),
                 radius: 2.5,
                 colors: [
-                  const Color(0xFFFFA6B4).withOpacity(0.5),
-                  const Color(0xFFFFE0B9).withOpacity(0.25),
+                  const Color(0xFFFFA6B4).withValues(alpha: 0.5),
+                  const Color(0xFFFFE0B9).withValues(alpha: 0.25),
                   Colors.white,
                 ],
                 stops: const [0.0, 0.7, 1.0],
@@ -106,7 +106,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(100),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.5),
+                                  color: Colors.black.withValues(alpha: 0.5),
                                   blurRadius: 30,
                                   spreadRadius: 10,
                                   offset: const Offset(0, 10),
@@ -154,8 +154,8 @@ class ForgotPasswordScreen extends StatelessWidget {
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: iconColor.withOpacity(0.5), width: 1),
-                  color: iconColor.withOpacity(0.05),
+                  border: Border.all(color: iconColor.withValues(alpha: 0.5), width: 1),
+                  color: iconColor.withValues(alpha: 0.05),
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
               ),

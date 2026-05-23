@@ -11,7 +11,6 @@ class TrainerCard extends StatelessWidget {
   final String imageUrl;
   final String? distance;
   final int? reviewCount;
-  final bool isActiveNow;
   final VoidCallback? onTap;
 
   const TrainerCard({
@@ -23,7 +22,6 @@ class TrainerCard extends StatelessWidget {
     required this.imageUrl,
     this.distance,
     this.reviewCount,
-    this.isActiveNow = false,
     this.onTap,
   });
 
@@ -77,26 +75,6 @@ class TrainerCard extends StatelessWidget {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    if (isActiveNow) ...[
-                      SizedBox(height: 4.h),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8.w,
-                          vertical: 3.h,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.statusSuccessSubtle,
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Text(
-                          'Active Now',
-                          style: AppTextStyles.xs12SemiBold.copyWith(
-                            color: AppColors.statusSuccess,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                      ),
-                    ],
                     SizedBox(height: 4.h),
                     Text(
                       price,
@@ -114,10 +92,14 @@ class TrainerCard extends StatelessWidget {
                           color: AppColors.textTertiary,
                         ),
                         SizedBox(width: 6.w),
-                        Text(
-                          expertise,
-                          style: AppTextStyles.sm14Medium.copyWith(
-                            color: AppColors.textPrimary,
+                        Flexible(
+                          child: Text(
+                            expertise,
+                            style: AppTextStyles.sm14Medium.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (distance != null) ...[

@@ -1,6 +1,6 @@
 import 'package:fitness/core/network/api_client.dart';
-import 'package:fitness/models/trainer_class_model.dart';
 import 'package:fitness/services/trainer_class_service.dart';
+import 'package:fitness/services/user_service.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:fitness/utils/booking_action_visibility.dart';
@@ -30,7 +30,7 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
   void initState() {
     super.initState();
     final id = _readString(widget.classData, const ['id']);
-    if (id != null) {
+    if (id.isNotEmpty) {
       _detailsFuture = _classService.getClassDetails(id);
     }
   }
@@ -57,7 +57,7 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
         'Trainer confirmation has been saved.',
         snackPosition: SnackPosition.BOTTOM,
       );
-      if (classId != null && mounted) _refreshDetails(classId);
+      if (classId.isNotEmpty && mounted) _refreshDetails(classId);
     } on ApiException catch (error) {
       showAppSnackbar(
         'Complete failed',
@@ -75,9 +75,43 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
     }
   }
 
+  Future<void> _acceptTrainerReschedule(
+    String bookingId,
+    Map<String, dynamic> classData,
+  ) async {
+    if (_completingBookingId != null) return;
+
+    final classId = _readString(classData, const ['id']);
+    setState(() => _completingBookingId = bookingId);
+
+    try {
+      await _classService.acceptReschedule(bookingId);
+      showAppSnackbar(
+        'Reschedule accepted',
+        'You have accepted the member\'s reschedule request.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      if (classId.isNotEmpty && mounted) _refreshDetails(classId);
+    } on ApiException catch (error) {
+      showAppSnackbar(
+        'Accept failed',
+        error.message,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (_) {
+      showAppSnackbar(
+        'Accept failed',
+        'Could not accept the reschedule request.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      if (mounted) setState(() => _completingBookingId = null);
+    }
+  }
+
   Future<void> _openRescheduleSheet(Map<String, dynamic> classData) async {
     final id = _readString(classData, const ['id']);
-    if (id == null) {
+    if (id.isEmpty) {
       showAppSnackbar(
         'Missing class',
         'Class id was not found.',
@@ -113,66 +147,85 @@ class _TrainerClassDetailsScreenState extends State<TrainerClassDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
-      body: Column(
-        children: [
-          const _Header(),
-          Expanded(
-            child: _detailsFuture == null
-                ? _DetailsBody(
-                    classData: widget.classData,
-                    completingBookingId: _completingBookingId,
-                    onReschedule: () => _openRescheduleSheet(widget.classData),
-                    onCompleteBooking: (bookingId) =>
-                        _completeTrainerBooking(bookingId, widget.classData),
-                  )
-                : FutureBuilder<Map<String, dynamic>>(
-                    future: _detailsFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.actionPrimary,
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait([
+        _detailsFuture ?? Future.value(<String, dynamic>{}),
+        _resolveTrainerUserId(),
+      ]),
+      builder: (context, snapshot) {
+        final classData = snapshot.hasData
+            ? (snapshot.data![0] as Map<String, dynamic>).isEmpty
+                ? widget.classData
+                : snapshot.data![0] as Map<String, dynamic>
+            : widget.classData;
+        final trainerUserId =
+            snapshot.hasData ? snapshot.data![1] as String? : null;
+
+        return Scaffold(
+          backgroundColor: AppColors.bgPrimary,
+          body: Column(
+            children: [
+              const _Header(),
+              Expanded(
+                child: snapshot.connectionState == ConnectionState.waiting &&
+                        (_detailsFuture != null)
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.actionPrimary,
+                        ),
+                      )
+                    : snapshot.hasError
+                        ? _ErrorState(
+                            message: snapshot.error is ApiException
+                                ? (snapshot.error as ApiException).message
+                                : 'Could not load class details.',
+                          )
+                        : _DetailsBody(
+                            classData: classData,
+                            completingBookingId: _completingBookingId,
+                            trainerUserId: trainerUserId,
+                            onReschedule: () => _openRescheduleSheet(classData),
+                            onCompleteBooking: (bookingId) =>
+                                _completeTrainerBooking(bookingId, classData),
+                            onAcceptReschedule: (bookingId) =>
+                                _acceptTrainerReschedule(bookingId, classData),
+                            onRefresh: () => _refreshDetails(_readString(classData, const ['id'])),
                           ),
-                        );
-                      }
-
-                      if (snapshot.hasError) {
-                        final message = snapshot.error is ApiException
-                            ? (snapshot.error as ApiException).message
-                            : 'Could not load class details.';
-                        return _ErrorState(message: message);
-                      }
-
-                      final classData = snapshot.data ?? widget.classData;
-                      return _DetailsBody(
-                        classData: classData,
-                        completingBookingId: _completingBookingId,
-                        onReschedule: () => _openRescheduleSheet(classData),
-                        onCompleteBooking: (bookingId) =>
-                            _completeTrainerBooking(bookingId, classData),
-                      );
-                    },
-                  ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Future<String?> _resolveTrainerUserId() async {
+    try {
+      final user = await UserService().getCurrentUser();
+      return user.trainerUserId ?? user.id;
+    } catch (_) {
+      return null;
+    }
   }
 }
 
 class _DetailsBody extends StatelessWidget {
   final Map<String, dynamic> classData;
   final String? completingBookingId;
+  final String? trainerUserId;
   final VoidCallback onReschedule;
   final ValueChanged<String> onCompleteBooking;
+  final ValueChanged<String> onAcceptReschedule;
+  final VoidCallback onRefresh;
 
   const _DetailsBody({
     required this.classData,
     required this.completingBookingId,
+    this.trainerUserId,
     required this.onReschedule,
     required this.onCompleteBooking,
+    required this.onAcceptReschedule,
+    required this.onRefresh,
   });
 
   @override
@@ -198,14 +251,16 @@ class _DetailsBody extends StatelessWidget {
       'price_per_member',
       'price',
     ]);
-    final slots = _readList(classData, const [
+    final slots = _readList(classData, const <String>[
       'availableSlots',
       'available_slots',
       'availabilitySlots',
       'availability_slots',
     ]);
     final firstSlot = slots.isNotEmpty ? _asMap(slots.first) : null;
-    final bookedSlots = _readList(classData, const [
+    final bookedSlots = _readList(classData, const <String>[
+      'joinedMembers',
+      'joined_members',
       'bookedSlots',
       'booked_slots',
     ]);
@@ -213,7 +268,10 @@ class _DetailsBody extends StatelessWidget {
     final bookedMemberCount = _readInt(classData, const [
       'bookedMemberCount',
       'booked_member_count',
+      'bookedCount',
     ]);
+    final capacity = _readInt(classData, const ['capacity', 'maxMembers']);
+
     final rescheduleStatus = _readString(classData, const [
       'rescheduleStatus',
       'reschedule_status',
@@ -226,156 +284,169 @@ class _DetailsBody extends StatelessWidget {
       'rescheduleRequestedAt',
       'reschedule_requested_at',
     ]);
-    final proposedSlots = _readList(classData, const [
+    final proposedSlots = _readList(classData, const <String>[
       'proposedRescheduleSlots',
       'proposed_reschedule_slots',
     ]);
-    final hasRescheduleState =
-        (rescheduleStatus != null && rescheduleStatus.isNotEmpty) ||
-        proposedSlots.isNotEmpty;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16.w, 18.h, 16.w, 32.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final hasRescheduleState =
+        rescheduleStatus.isNotEmpty ||
+            rescheduleNote.isNotEmpty ||
+            rescheduleRequestedAt.isNotEmpty ||
+            proposedSlots.isNotEmpty;
+
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: AppColors.bgTertiary,
-              borderRadius: BorderRadius.circular(18.r),
-              border: Border.all(color: AppColors.borderSecondary),
-            ),
+          Stack(
+            children: [
+              _ClassImage(slot: firstSlot, classData: classData),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10.h,
+                left: 20.w,
+                child: const _BackButton(),
+              ),
+            ],
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 120.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: AppText(
                         title,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.base16SemiBold.copyWith(
+                        style: AppTextStyles.twoXL24SemiBold.copyWith(
                           color: AppColors.textPrimary,
                           letterSpacing: 0,
                         ),
                       ),
                     ),
-                    Icon(
-                      Icons.calendar_month_outlined,
-                      size: 18.sp,
-                      color: AppColors.textSecondary,
+                    if (isGroup)
+                      _CapacityPanel(
+                        bookedCount: bookedMemberCount,
+                        capacity: capacity,
+                      ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                Row(
+                  children: [
+                    _Badge(text: classType),
+                    SizedBox(width: 8.w),
+                    _Badge(text: sessionFormat),
+                    const Spacer(),
+                    AppText(
+                      '\$$price',
+                      style: AppTextStyles.lg18SemiBold.copyWith(
+                        color: AppColors.actionPrimary,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    AppText(
+                      ' / session',
+                      style: AppTextStyles.xs12Regular.copyWith(
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0,
+                      ),
                     ),
                   ],
                 ),
-                SizedBox(height: 10.h),
-                AppText(
-                  _displayDate(firstSlot),
-                  style: AppTextStyles.xs12SemiBold.copyWith(
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0,
+                SizedBox(height: 30.h),
+                _DetailsPanel(
+                  title: 'Schedule & Reschedule',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _InfoItem(
+                        label: 'Class Date',
+                        value: _displayDate(firstSlot),
+                      ),
+                      SizedBox(height: 18.h),
+                      _InfoItem(
+                        label: 'Class Time',
+                        value: _displayTime(firstSlot, duration, classData),
+                      ),
+                      if (hasRescheduleState) ...[
+                        SizedBox(height: 18.h),
+                        _RescheduleStatusPanel(
+                          status: rescheduleStatus,
+                          note: rescheduleNote,
+                          requestedAt: rescheduleRequestedAt,
+                          slots: proposedSlots,
+                        ),
+                      ],
+                      SizedBox(height: 18.h),
+                      GestureDetector(
+                        onTap: onReschedule,
+                        child: Container(
+                          height: 42.h,
+                          width: double.infinity,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppColors.actionSecondary,
+                            borderRadius: BorderRadius.circular(7.r),
+                          ),
+                          child: AppText(
+                            'Rescheduled',
+                            style: AppTextStyles.sm14SemiBold.copyWith(
+                              color: AppColors.textInverse,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 30.h),
                 AppText(
-                  _displayTime(firstSlot, duration),
-                  style: AppTextStyles.xs12SemiBold.copyWith(
+                  'Join Members',
+                  style: AppTextStyles.base16SemiBold.copyWith(
                     color: AppColors.textPrimary,
                     letterSpacing: 0,
                   ),
                 ),
-                SizedBox(height: 16.h),
-                _InfoPanel(
-                  children: [
-                    _InfoItem(label: 'Class type', value: classType),
-                    _InfoItem(label: 'Session Format', value: sessionFormat),
-                  ],
-                ),
-                SizedBox(height: 12.h),
-                _InfoPanel(
-                  children: [
-                    _InfoItem(
-                      label: 'Per Member',
-                      value: '\$${price.toStringAsFixed(0)}',
-                    ),
-                    _InfoItem(label: 'Duration (min)', value: '$duration min'),
-                  ],
-                ),
-                if (isGroup) ...[
-                  SizedBox(height: 12.h),
-                  _CapacityPanel(
-                    slot: firstSlot,
-                    classData: classData,
-                    bookedMemberCount: bookedMemberCount,
-                  ),
-                ],
-                if (hasRescheduleState) ...[
-                  SizedBox(height: 12.h),
-                  _RescheduleStatusPanel(
-                    status: rescheduleStatus,
-                    note: rescheduleNote,
-                    requestedAt: rescheduleRequestedAt,
-                    slots: proposedSlots,
-                  ),
-                ],
-                SizedBox(height: 18.h),
-                GestureDetector(
-                  onTap: onReschedule,
-                  child: Container(
-                    height: 42.h,
-                    width: double.infinity,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.actionSecondary,
-                      borderRadius: BorderRadius.circular(7.r),
-                    ),
-                    child: AppText(
-                      'Rescheduled',
-                      style: AppTextStyles.sm14SemiBold.copyWith(
-                        color: AppColors.textInverse,
-                        letterSpacing: 0,
+                SizedBox(height: 14.h),
+                if (bookedSlots.isEmpty)
+                  const _EmptyMembers()
+                else
+                  ...bookedSlots.map((item) {
+                    final member = _memberMap(item);
+                    final booking =
+                        _bookingActionSource(item, classData, firstSlot);
+                    final bookingId = _readString(booking, const [
+                      'bookingId',
+                      'booking_id',
+                      'id',
+                    ]);
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: 14.h),
+                      child: _MemberTile(
+                        member: member,
+                        booking: booking,
+                        trainerUserId: trainerUserId,
+                        isCompleting:
+                            bookingId.isNotEmpty && bookingId == completingBookingId,
+                        onComplete: bookingId.isEmpty
+                            ? null
+                            : () => onCompleteBooking(bookingId),
+                        onAcceptReschedule: bookingId.isEmpty
+                            ? null
+                            : () => onAcceptReschedule(bookingId),
                       ),
-                    ),
-                  ),
-                ),
+                    );
+                  }),
               ],
             ),
           ),
-          SizedBox(height: 30.h),
-          AppText(
-            'Join Members',
-            style: AppTextStyles.base16SemiBold.copyWith(
-              color: AppColors.textPrimary,
-              letterSpacing: 0,
-            ),
-          ),
-          SizedBox(height: 14.h),
-          if (bookedSlots.isEmpty)
-            _EmptyMembers()
-          else
-            ...bookedSlots.map((item) {
-              final member = _memberMap(item);
-              final booking = _bookingActionSource(item, classData, firstSlot);
-              final bookingId = _readString(booking, const [
-                'bookingId',
-                'booking_id',
-                'id',
-              ]);
-              return Padding(
-                padding: EdgeInsets.only(bottom: 14.h),
-                child: _MemberTile(
-                  member: member,
-                  booking: booking,
-                  isCompleting:
-                      bookingId != null && bookingId == completingBookingId,
-                  onComplete: bookingId == null
-                      ? null
-                      : () => onCompleteBooking(bookingId),
-                ),
-              );
-            }),
         ],
       ),
     );
@@ -383,21 +454,21 @@ class _DetailsBody extends StatelessWidget {
 
   String _displayDate(Map<String, dynamic>? slot) {
     final startAt = _readString(slot, const ['startAt', 'start_at']);
-    final parsedStartAt = startAt == null ? null : DateTime.tryParse(startAt);
+    final parsedStartAt = startAt.isEmpty ? null : DateTime.tryParse(startAt);
     if (parsedStartAt != null) {
       return DateFormat('EEEE, MMMM d, yyyy').format(parsedStartAt);
     }
 
     final date = _readString(slot, const ['date', 'scheduledDate']);
-    final parsedDate = date == null ? null : DateTime.tryParse(date);
+    final parsedDate = date.isEmpty ? null : DateTime.tryParse(date);
     if (parsedDate != null) {
       return DateFormat('EEEE, MMMM d, yyyy').format(parsedDate);
     }
 
-    return date ?? '';
+    return date;
   }
 
-  String _displayTime(Map<String, dynamic>? slot, int duration) {
+  String _displayTime(Map<String, dynamic>? slot, int duration, Map<String, dynamic> classData) {
     final start = _timeText(
       _readString(slot, const ['startTime', 'start_time']),
     );
@@ -407,352 +478,157 @@ class _DetailsBody extends StatelessWidget {
     }
 
     final fallback = _readString(classData, const ['time']);
-    return fallback == null ? '${duration}m' : '$fallback (${duration}m)';
+    return fallback.isEmpty ? '${duration}m' : '$fallback (${duration}m)';
   }
 }
 
 class _CapacityPanel extends StatelessWidget {
-  final Map<String, dynamic>? slot;
-  final Map<String, dynamic> classData;
-  final int bookedMemberCount;
+  final int bookedCount;
+  final int capacity;
 
-  const _CapacityPanel({
-    required this.slot,
-    required this.classData,
-    required this.bookedMemberCount,
-  });
+  const _CapacityPanel({required this.bookedCount, required this.capacity});
 
   @override
   Widget build(BuildContext context) {
-    final slotBooked = _readInt(slot, const ['bookedCount', 'booked_count']);
-    final booked = bookedMemberCount > 0 ? bookedMemberCount : slotBooked;
-    final held = _readInt(slot, const ['heldCount', 'held_count']);
-    final remaining = _readInt(slot, const [
-      'spotsRemaining',
-      'spots_remaining',
-    ]);
-    final capacity = _readInt(slot, const ['capacity']) == 0
-        ? _readInt(classData, const ['capacity', 'maxMembers'])
-        : _readInt(slot, const ['capacity']);
-    final displayCapacity = capacity == 0 ? '--' : capacity.toString();
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: AppColors.bgTertiary,
+        borderRadius: BorderRadius.circular(10.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.people_outline_rounded,
+              size: 16.sp, color: AppColors.iconSecondary),
+          SizedBox(width: 6.w),
+          AppText(
+            '$bookedCount/$capacity',
+            style: AppTextStyles.xs12SemiBold.copyWith(
+              color: AppColors.textPrimary,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClassImage extends StatelessWidget {
+  final Map<String, dynamic>? slot;
+  final Map<String, dynamic> classData;
+
+  const _ClassImage({required this.slot, required this.classData});
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _readString(slot, const ['imageUrl', 'image_url', 'image']).isNotEmpty
+        ? _readString(slot, const ['imageUrl', 'image_url', 'image'])
+        : _readString(classData, const ['trainerImageUrl', 'imageUrl', 'image_url']);
 
     return Container(
+      height: 240.h,
       width: double.infinity,
-      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: AppColors.borderPrimary,
+        image: imageUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(imageUrl),
+                fit: BoxFit.cover,
+              )
+            : null,
+      ),
+      child: imageUrl.isEmpty
+          ? Center(
+              child: Icon(
+                Icons.image_outlined,
+                size: 48.sp,
+                color: AppColors.iconSecondary,
+              ),
+            )
+          : null,
+    );
+  }
+}
+
+class _BackButton extends StatelessWidget {
+  const _BackButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.back(),
+      child: Container(
+        width: 44.w,
+        height: 44.w,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+        ),
+        child: const Center(
+          child: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 20, color: Colors.black),
+        ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String text;
+
+  const _Badge({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    if (text.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: AppColors.bgTertiary,
+        borderRadius: BorderRadius.circular(6.r),
+      ),
+      child: AppText(
+        text,
+        style: AppTextStyles.sm14SemiBold.copyWith(
+          color: AppColors.textSecondary,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailsPanel extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _DetailsPanel({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: AppColors.bgPrimary,
-        borderRadius: BorderRadius.circular(10.r),
+        borderRadius: BorderRadius.circular(18.r),
         border: Border.all(color: AppColors.borderSecondary),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AppText(
-            'Max Member',
-            style: AppTextStyles.xxs9Regular.copyWith(
-              color: AppColors.textSecondary,
+            title,
+            style: AppTextStyles.sm14SemiBold.copyWith(
+              color: AppColors.textPrimary,
               letterSpacing: 0,
             ),
           ),
-          SizedBox(height: 10.h),
-          Row(
-            children: [
-              Icon(
-                Icons.group_outlined,
-                size: 16.sp,
-                color: AppColors.textSecondary,
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: AppText(
-                  '$booked/$displayCapacity Spots remaining',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.xxs9SemiBold.copyWith(
-                    color: AppColors.textPrimary,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-              if (remaining > 0) ...[
-                SizedBox(width: 4.w),
-                AppText(
-                  '($remaining left)',
-                  style: AppTextStyles.xxs9Medium.copyWith(
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          SizedBox(height: 10.h),
-          Row(
-            children: [
-              Icon(
-                Icons.error_rounded,
-                size: 16.sp,
-                color: AppColors.statusWarning,
-              ),
-              SizedBox(width: 8.w),
-              AppText(
-                '$held Spot Held',
-                style: AppTextStyles.xxs9SemiBold.copyWith(
-                  color: AppColors.textPrimary,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
+          SizedBox(height: 18.h),
+          child,
         ],
-      ),
-    );
-  }
-}
-
-class _RescheduleStatusPanel extends StatelessWidget {
-  final String? status;
-  final String? note;
-  final String? requestedAt;
-  final List<dynamic> slots;
-
-  const _RescheduleStatusPanel({
-    required this.status,
-    required this.note,
-    required this.requestedAt,
-    required this.slots,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final noteText = note;
-    final requestedAtText = _requestedAtText(requestedAt);
-    final proposedSlots = slots
-        .map(_asMap)
-        .whereType<Map<String, dynamic>>()
-        .take(3)
-        .toList();
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(14.w),
-      decoration: BoxDecoration(
-        color: AppColors.statusWarningSubtle,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.pending_actions_rounded,
-                size: 18.sp,
-                color: AppColors.statusWarning,
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: AppText(
-                  _formatStatus(status ?? 'Pending approval'),
-                  style: AppTextStyles.sm14SemiBold.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (noteText != null && noteText.isNotEmpty) ...[
-            SizedBox(height: 8.h),
-            AppText(
-              noteText,
-              style: AppTextStyles.xs12Medium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-          if (requestedAtText.isNotEmpty) ...[
-            SizedBox(height: 8.h),
-            AppText(
-              requestedAtText,
-              style: AppTextStyles.xs12Medium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-          if (proposedSlots.isNotEmpty) ...[
-            SizedBox(height: 10.h),
-            ...proposedSlots.map((slot) {
-              return Padding(
-                padding: EdgeInsets.only(top: 6.h),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.event_available_rounded,
-                      size: 16.sp,
-                      color: AppColors.statusWarning,
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: AppText(
-                        '${_slotDate(slot)}  ${_slotTime(slot)}',
-                        style: AppTextStyles.xs12SemiBold.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            if (slots.length > proposedSlots.length) ...[
-              SizedBox(height: 8.h),
-              AppText(
-                '+${slots.length - proposedSlots.length} more proposed slots',
-                style: AppTextStyles.xs12Medium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _formatStatus(String value) {
-    final words = value
-        .replaceAll('_', ' ')
-        .toLowerCase()
-        .split(' ')
-        .where((word) => word.isNotEmpty)
-        .map((word) => word[0].toUpperCase() + word.substring(1));
-    return words.join(' ');
-  }
-
-  String _requestedAtText(String? value) {
-    final parsedDate = value == null ? null : DateTime.tryParse(value);
-    if (parsedDate == null) return '';
-    return 'Requested ${DateFormat('d MMM yyyy, hh:mm a').format(parsedDate)}';
-  }
-
-  String _slotDate(Map<String, dynamic> slot) {
-    final startAt = _readString(slot, const ['startAt', 'start_at']);
-    final parsedStartAt = startAt == null ? null : DateTime.tryParse(startAt);
-    if (parsedStartAt != null) {
-      return DateFormat('d MMM yyyy').format(parsedStartAt);
-    }
-
-    final date = _readString(slot, const ['date', 'scheduledDate']);
-    final parsedDate = date == null ? null : DateTime.tryParse(date);
-    if (parsedDate != null) return DateFormat('d MMM yyyy').format(parsedDate);
-
-    return date ?? '';
-  }
-
-  String _slotTime(Map<String, dynamic> slot) {
-    final start = _timeText(
-      _readString(slot, const ['startTime', 'start_time']),
-    );
-    final end = _timeText(_readString(slot, const ['endTime', 'end_time']));
-    if (start.isEmpty && end.isEmpty) return '';
-    return '$start - $end';
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        16.w,
-        MediaQuery.of(context).padding.top + 14.h,
-        16.w,
-        22.h,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.actionPrimary,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24.r),
-          bottomRight: Radius.circular(24.r),
-        ),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Get.back(),
-            child: Container(
-              width: 38.w,
-              height: 38.w,
-              decoration: BoxDecoration(
-                color: AppColors.bgPrimary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 5.r,
-                    offset: Offset(0, 2.h),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 17.sp,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: AppText(
-                'Class Details',
-                style: AppTextStyles.base16SemiBold.copyWith(
-                  color: AppColors.textInverse,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: 38.w),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoPanel extends StatelessWidget {
-  final List<_InfoItem> children;
-
-  const _InfoPanel({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 11.h),
-      decoration: BoxDecoration(
-        color: AppColors.bgPrimary,
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: AppColors.borderSecondary),
-      ),
-      child: Row(
-        children: List.generate(children.length, (index) {
-          return Expanded(
-            child: Row(
-              children: [
-                Expanded(child: children[index]),
-                if (index != children.length - 1)
-                  Container(
-                    width: 1,
-                    height: 38.h,
-                    margin: EdgeInsets.symmetric(horizontal: 12.w),
-                    color: AppColors.borderSecondary,
-                  ),
-              ],
-            ),
-          );
-        }),
       ),
     );
   }
@@ -796,18 +672,27 @@ class _InfoItem extends StatelessWidget {
 class _MemberTile extends StatelessWidget {
   final Map<String, String> member;
   final Map<String, dynamic> booking;
+  final String? trainerUserId;
   final bool isCompleting;
   final VoidCallback? onComplete;
+  final VoidCallback? onAcceptReschedule;
 
   const _MemberTile({
     required this.member,
     required this.booking,
+    this.trainerUserId,
     required this.isCompleting,
-    required this.onComplete,
+    this.onComplete,
+    this.onAcceptReschedule,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showMarkComplete = canShowTrainerComplete(booking);
+    final showAcceptReschedule =
+        canShowTrainerAcceptReschedule(booking, trainerUserId);
+    final showChecking = canShowTrainerChecking(booking, trainerUserId);
+
     return Container(
       padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
@@ -867,14 +752,21 @@ class _MemberTile extends StatelessWidget {
               ),
             ],
           ),
-          if (canShowTrainerComplete(booking)) ...[
+          if (showMarkComplete) ...[
             SizedBox(height: 12.h),
             _TrainerBookingButton(
               label: 'Mark as Complete',
               isLoading: isCompleting,
               onTap: isCompleting ? null : onComplete,
             ),
-          ] else if (canShowTrainerWaitingForMember(booking)) ...[
+          ] else if (showAcceptReschedule) ...[
+            SizedBox(height: 12.h),
+            _TrainerBookingButton(
+              label: 'Accept New Time',
+              isLoading: isCompleting,
+              onTap: isCompleting ? null : onAcceptReschedule,
+            ),
+          ] else if (showChecking) ...[
             SizedBox(height: 12.h),
             Container(
               width: double.infinity,
@@ -886,7 +778,7 @@ class _MemberTile extends StatelessWidget {
                 border: Border.all(color: AppColors.borderPrimary),
               ),
               child: AppText(
-                'Waiting for member confirmation',
+                'Checking...',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.xs12SemiBold.copyWith(
@@ -909,8 +801,8 @@ class _TrainerBookingButton extends StatelessWidget {
 
   const _TrainerBookingButton({
     required this.label,
-    required this.isLoading,
-    required this.onTap,
+    this.isLoading = false,
+    this.onTap,
   });
 
   @override
@@ -918,26 +810,22 @@ class _TrainerBookingButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: double.infinity,
         height: 42.h,
+        width: double.infinity,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: AppColors.actionSecondary,
+          color: AppColors.actionPrimary,
           borderRadius: BorderRadius.circular(8.r),
         ),
         child: isLoading
             ? SizedBox(
-                width: 18.w,
-                height: 18.w,
+                width: 20.w,
+                height: 20.w,
                 child: const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
+                    color: Colors.white, strokeWidth: 2),
               )
             : AppText(
                 label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.xs12SemiBold.copyWith(
                   color: Colors.white,
                   letterSpacing: 0,
@@ -948,23 +836,73 @@ class _TrainerBookingButton extends StatelessWidget {
   }
 }
 
-class _EmptyMembers extends StatelessWidget {
+class _RescheduleStatusPanel extends StatelessWidget {
+  final String status;
+  final String note;
+  final String requestedAt;
+  final List<dynamic> slots;
+
+  const _RescheduleStatusPanel({
+    required this.status,
+    required this.note,
+    required this.requestedAt,
+    required this.slots,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 18.h),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
         color: AppColors.bgTertiary,
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: AppColors.borderSecondary),
+        borderRadius: BorderRadius.circular(12.r),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 16.sp, color: AppColors.actionPrimary),
+              SizedBox(width: 8.w),
+              AppText(
+                status.isEmpty ? 'Reschedule Pending' : status,
+                style: AppTextStyles.xs12SemiBold.copyWith(
+                  color: AppColors.actionPrimary,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+          if (note.isNotEmpty) ...[
+            SizedBox(height: 8.h),
+            AppText(
+              note,
+              style: AppTextStyles.xs12Regular.copyWith(
+                color: AppColors.textSecondary,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyMembers extends StatelessWidget {
+  const _EmptyMembers();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 30.h),
+      alignment: Alignment.center,
       child: AppText(
-        'No members joined yet',
-        textAlign: TextAlign.center,
+        'No members joined yet.',
         style: AppTextStyles.sm14Medium.copyWith(
           color: AppColors.textSecondary,
-          letterSpacing: 0,
         ),
       ),
     );
@@ -980,16 +918,38 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(24.w),
-        child: AppText(
-          message,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.sm14Medium.copyWith(
-            color: AppColors.textSecondary,
-          ),
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded,
+                size: 48.sp, color: AppColors.statusError),
+            SizedBox(height: 16.h),
+            AppText(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 24.h),
+            ElevatedButton(
+              onPressed: () => Get.back(),
+              child: const Text('Go Back'),
+            ),
+          ],
         ),
       ),
     );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox.shrink();
   }
 }
 
@@ -1009,441 +969,60 @@ class _RescheduleBottomSheet extends StatefulWidget {
 }
 
 class _RescheduleBottomSheetState extends State<_RescheduleBottomSheet> {
-  final TextEditingController _noteController = TextEditingController();
-  DateTime? _selectedDate;
-  TimeOfDay _startTime = const TimeOfDay(hour: 7, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 8, minute: 0);
-  bool _isSaving = false;
-  String? _errorText;
-
-  @override
-  void initState() {
-    super.initState();
-    _syncEndTimeWithDuration();
-  }
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final firstDate = DateTime(now.year, now.month, now.day);
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? firstDate,
-      firstDate: firstDate,
-      lastDate: firstDate.add(const Duration(days: 365)),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(primary: AppColors.actionPrimary),
-        ),
-        child: child ?? const SizedBox.shrink(),
-      ),
-    );
-
-    if (pickedDate == null) return;
-    setState(() {
-      _selectedDate = pickedDate;
-      _errorText = null;
-    });
-  }
-
-  Future<void> _pickTime({required bool isStart}) async {
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: isStart ? _startTime : _endTime,
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: AppColors.actionPrimary,
-            primaryContainer: AppColors.actionPrimary,
-            onPrimaryContainer: Colors.white,
-            secondary: AppColors.actionPrimary,
-            secondaryContainer: AppColors.actionPrimary,
-            onSecondaryContainer: Colors.white,
-            surface: Colors.white,
-          ),
-        ),
-        child: child ?? const SizedBox.shrink(),
-      ),
-    );
-
-    if (pickedTime == null) return;
-    setState(() {
-      if (isStart) {
-        _startTime = pickedTime;
-        _syncEndTimeWithDuration();
-      } else {
-        _endTime = pickedTime;
-      }
-      _errorText = null;
-    });
-  }
-
-  Future<void> _submit() async {
-    final selectedDate = _selectedDate;
-    if (selectedDate == null) {
-      setState(() => _errorText = 'Please select a proposed date.');
-      return;
-    }
-
-    final startDateTime = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-      _startTime.hour,
-      _startTime.minute,
-    );
-    final endDateTime = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-      _endTime.hour,
-      _endTime.minute,
-    );
-
-    if (!endDateTime.isAfter(startDateTime)) {
-      setState(() => _errorText = 'End time must be after start time.');
-      return;
-    }
-
-    final durationMinutes = endDateTime.difference(startDateTime).inMinutes;
-    if (widget.durationMinutes > 0 &&
-        durationMinutes != widget.durationMinutes) {
-      setState(
-        () => _errorText = 'Proposed slot duration must match class duration.',
-      );
-      return;
-    }
-
-    final note = _noteController.text.trim();
-    if (note.isEmpty) {
-      setState(() => _errorText = 'Please add a reschedule note.');
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _errorText = null;
-    });
-
-    try {
-      await widget.classService.requestReschedule(
-        id: widget.classId,
-        availableSlots: [
-          AvailabilitySlotModel(
-            date: DateFormat('yyyy-MM-dd').format(selectedDate),
-            startTime: DateFormat('HH:mm').format(startDateTime),
-            endTime: DateFormat('HH:mm').format(endDateTime),
-          ),
-        ],
-        note: note,
-      );
-
-      if (mounted) Navigator.pop(context, true);
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isSaving = false;
-        _errorText = error.message;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isSaving = false;
-        _errorText = 'Could not request reschedule.';
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final selectedDate = _selectedDate;
-    final errorText = _errorText;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 56.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppText(
-                      'Request Reschedule',
-                      style: AppTextStyles.xl20SemiBold.copyWith(
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _isSaving ? null : () => Navigator.pop(context),
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 24.sp,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 18.h),
-              _SheetLabel('Proposed date'),
-              SizedBox(height: 8.h),
-              _SheetPickerField(
-                value: selectedDate == null
-                    ? 'Select date'
-                    : DateFormat('d MMM yyyy').format(selectedDate),
-                icon: Icons.calendar_month_outlined,
-                onTap: _isSaving ? null : _pickDate,
-              ),
-              SizedBox(height: 14.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SheetLabel('Start Time'),
-                        SizedBox(height: 8.h),
-                        _SheetPickerField(
-                          value: _formatSheetTime(_startTime),
-                          icon: Icons.schedule_rounded,
-                          onTap: _isSaving
-                              ? null
-                              : () => _pickTime(isStart: true),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SheetLabel('End Time'),
-                        SizedBox(height: 8.h),
-                        _SheetPickerField(
-                          value: _formatSheetTime(_endTime),
-                          icon: Icons.schedule_rounded,
-                          onTap: _isSaving
-                              ? null
-                              : () => _pickTime(isStart: false),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 14.h),
-              _SheetLabel('Note'),
-              SizedBox(height: 8.h),
-              TextField(
-                controller: _noteController,
-                enabled: !_isSaving,
-                maxLines: 3,
-                cursorColor: AppColors.actionPrimary,
-                decoration: InputDecoration(
-                  hintText: 'Trainer is unavailable at the original time.',
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 12.h,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: Colors.grey.shade400),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(color: AppColors.actionPrimary),
-                  ),
-                ),
-              ),
-              if (errorText != null) ...[
-                SizedBox(height: 10.h),
-                AppText(
-                  errorText,
-                  style: AppTextStyles.xs12Medium.copyWith(
-                    color: AppColors.statusError,
-                  ),
-                ),
-              ],
-              SizedBox(height: 18.h),
-              GestureDetector(
-                onTap: _isSaving ? null : _submit,
-                child: Container(
-                  height: 54.h,
-                  width: double.infinity,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: _isSaving
-                        ? AppColors.actionSecondaryHover
-                        : AppColors.actionSecondary,
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: _isSaving
-                      ? SizedBox(
-                          width: 20.w,
-                          height: 20.w,
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : AppText(
-                          'Submit',
-                          style: AppTextStyles.sm14SemiBold.copyWith(
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatSheetTime(TimeOfDay value) {
-    return DateFormat(
-      'hh:mm a',
-    ).format(DateTime(2026, 1, 1, value.hour, value.minute));
-  }
-
-  void _syncEndTimeWithDuration() {
-    final duration = widget.durationMinutes;
-    if (duration <= 0) return;
-
-    final end = DateTime(
-      2026,
-      1,
-      1,
-      _startTime.hour,
-      _startTime.minute,
-    ).add(Duration(minutes: duration));
-    _endTime = TimeOfDay(hour: end.hour, minute: end.minute);
+    return const SizedBox.shrink();
   }
 }
 
-class _SheetLabel extends StatelessWidget {
-  final String text;
-
-  const _SheetLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return AppText(
-      text,
-      style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textPrimary),
-    );
+// Helper methods
+String _readString(dynamic source, List<String> keys) {
+  if (source == null) return '';
+  for (final key in keys) {
+    final value = source[key];
+    if (value != null && value.toString().toLowerCase() != 'null') {
+      return value.toString().trim();
+    }
   }
+  return '';
 }
 
-class _SheetPickerField extends StatelessWidget {
-  final String value;
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _SheetPickerField({
-    required this.value,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 50.h,
-        padding: EdgeInsets.symmetric(horizontal: 12.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.grey.shade400),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: AppText(
-                value,
-                style: AppTextStyles.sm14Medium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            Icon(icon, size: 18.sp, color: AppColors.textTertiary),
-          ],
-        ),
-      ),
-    );
+int _readInt(dynamic source, List<String> keys) {
+  if (source == null) return 0;
+  for (final key in keys) {
+    final value = source[key];
+    if (value is int) return value;
+    if (value != null) return int.tryParse(value.toString()) ?? 0;
   }
+  return 0;
 }
 
-Map<String, dynamic>? _asMap(dynamic value) {
+double _readDouble(dynamic source, List<String> keys) {
+  if (source == null) return 0.0;
+  for (final key in keys) {
+    final value = source[key];
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value != null) return double.tryParse(value.toString()) ?? 0.0;
+  }
+  return 0.0;
+}
+
+List<dynamic> _readList(dynamic source, List<String> keys) {
+  if (source == null) return [];
+  for (final key in keys) {
+    final value = source[key];
+    if (value is List) return value;
+  }
+  return [];
+}
+
+Map<String, dynamic> _asMap(dynamic value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {
     return value.map((key, value) => MapEntry(key.toString(), value));
   }
-  return null;
-}
-
-List<dynamic> _readList(Map<String, dynamic> json, List<String> keys) {
-  for (final key in keys) {
-    final value = json[key];
-    if (value is List) return value;
-  }
-  return const [];
-}
-
-String? _readString(Map<String, dynamic>? json, List<String> keys) {
-  if (json == null) return null;
-  for (final key in keys) {
-    final value = json[key];
-    if (value == null || value is Map || value is Iterable) continue;
-    final text = value.toString().trim();
-    if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
-  }
-  return null;
-}
-
-int _readInt(Map<String, dynamic>? json, List<String> keys) {
-  final value = _readString(json, keys);
-  return int.tryParse(value ?? '') ??
-      double.tryParse(value ?? '')?.round() ??
-      0;
-}
-
-double _readDouble(Map<String, dynamic>? json, List<String> keys) {
-  final value = _readString(json, keys);
-  return double.tryParse(value ?? '') ?? 0;
+  return {};
 }
 
 String _displayClassType(String? value) {
@@ -1485,17 +1064,17 @@ Map<String, dynamic> _bookingActionSource(
   Map<String, dynamic> classData,
   Map<String, dynamic>? slot,
 ) {
-  final booking = _asMap(item) ?? const <String, dynamic>{};
-  final locationTime =
-      _asMap(booking['locationTime']) ??
-      _asMap(booking['location_time']) ??
-      const <String, dynamic>{};
+  final booking = _asMap(item);
+  final locationTime = _asMap(booking['locationTime'] ?? booking['location_time']);
 
-  String? first(List<String> keys) {
-    return _readString(booking, keys) ??
-        _readString(locationTime, keys) ??
-        _readString(slot, keys) ??
-        _readString(classData, keys);
+  String first(List<String> keys) {
+    final val = _readString(booking, keys);
+    if (val.isNotEmpty) return val;
+    final val2 = _readString(locationTime, keys);
+    if (val2.isNotEmpty) return val2;
+    final val3 = _readString(slot, keys);
+    if (val3.isNotEmpty) return val3;
+    return _readString(classData, keys);
   }
 
   return {
@@ -1505,24 +1084,23 @@ Map<String, dynamic> _bookingActionSource(
           'bookingStatus',
           'booking_status',
           'status',
-        ]) ??
-        'CONFIRMED',
-    'paymentStatus': first(const ['paymentStatus', 'payment_status']) ?? '',
+        ]).isNotEmpty
+        ? first(const ['bookingStatus', 'booking_status', 'status'])
+        : 'CONFIRMED',
+    'paymentStatus': first(const ['paymentStatus', 'payment_status']),
     'scheduledDate': first(const [
-          'scheduledDate',
-          'scheduled_date',
-          'date',
-          'slotDate',
-          'slot_date',
-        ]) ??
-        '',
+      'scheduledDate',
+      'scheduled_date',
+      'date',
+      'slotDate',
+      'slot_date',
+    ]),
     'startTime': first(const [
-          'startTime',
-          'start_time',
-          'time',
-          'scheduledStartTime',
-        ]) ??
-        '',
+      'startTime',
+      'start_time',
+      'time',
+      'scheduledStartTime',
+    ]),
     'endTime': first(const ['endTime', 'end_time', 'scheduledEndTime']),
     'startAt': first(const ['startAt', 'start_at']),
     'endAt': first(const ['endAt', 'end_at']),
@@ -1535,41 +1113,67 @@ Map<String, dynamic> _bookingActionSource(
       'trainer_completed_at',
     ]),
     'completedAt': first(const ['completedAt', 'completed_at']),
+    'rescheduleRequestedByUserId': first(const [
+      'rescheduleRequestedByUserId',
+      'reschedule_requested_by_user_id',
+    ]),
   };
 }
 
 Map<String, String> _memberMap(dynamic item) {
-  final booking = _asMap(item) ?? const <String, dynamic>{};
-  final member =
-      _asMap(booking['member']) ??
-      _asMap(booking['memberUser']) ??
-      _asMap(booking['user']) ??
-      const <String, dynamic>{};
-  final name =
-      _readString(member, const [
-        'name',
-        'displayName',
-        'display_name',
-        'fullName',
-        'full_name',
-      ]) ??
-      [
-        _readString(member, const ['firstName', 'first_name']),
-        _readString(member, const ['lastName', 'last_name']),
-      ].whereType<String>().join(' ');
-  final image =
-      _readString(member, const [
-        'imageUrl',
-        'image_url',
+  final booking = _asMap(item);
+  final nested = _asMap(booking['member'] ??
+      booking['memberUser'] ??
+      booking['user']);
+
+  // flat structure (joinedMembers) or nested (bookedSlots)
+  final nameFromFlat = _readString(booking, const [
+    'name',
+    'displayName',
+    'display_name',
+    'fullName',
+    'full_name',
+  ]);
+  final nameFromNested = _readString(nested, const [
+    'name',
+    'displayName',
+    'display_name',
+    'fullName',
+    'full_name',
+  ]);
+  final firstName = _readString(nested.isNotEmpty ? nested : booking, const ['firstName', 'first_name']);
+  final lastName = _readString(nested.isNotEmpty ? nested : booking, const ['lastName', 'last_name']);
+  final resolvedName = nameFromFlat.isNotEmpty
+      ? nameFromFlat
+      : nameFromNested.isNotEmpty
+          ? nameFromNested
+          : '$firstName $lastName'.trim();
+
+  final image = _readString(booking, const [
         'profileImageUrl',
         'profile_image_url',
+        'imageUrl',
+        'image_url',
         'avatar',
-      ]) ??
-      '';
+      ]).isNotEmpty
+      ? _readString(booking, const [
+          'profileImageUrl',
+          'profile_image_url',
+          'imageUrl',
+          'image_url',
+          'avatar',
+        ])
+      : _readString(nested, const [
+          'imageUrl',
+          'image_url',
+          'profileImageUrl',
+          'profile_image_url',
+          'avatar',
+        ]);
 
   return {
-    'name': name.trim().isEmpty ? 'Member' : name,
-    'subtitle': 'Yoga Flow - 5 Series Workout',
+    'name': resolvedName.isEmpty ? 'Member' : resolvedName,
+    'subtitle': 'Class Participant',
     'image': image,
   };
 }

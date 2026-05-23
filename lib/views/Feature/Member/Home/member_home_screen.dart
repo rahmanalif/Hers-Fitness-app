@@ -535,9 +535,6 @@ class MemberHomeScreen extends StatelessWidget {
             reviewCount: trainer["reviewCount"] is num
                 ? (trainer["reviewCount"] as num).toInt()
                 : null,
-            isActiveNow:
-                trainer["locationLabel"] == "Active Now" ||
-                trainer["isActiveNow"] == true,
             onTap: () {
               Get.toNamed(
                 AppRoutes.trainerDetailsScreen,

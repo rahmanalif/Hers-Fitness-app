@@ -73,7 +73,7 @@ class _TrainerBottomNavScreenState extends State<TrainerBottomNavScreen> {
             borderRadius: BorderRadius.circular(35),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.19),
+                color: Colors.black.withValues(alpha: 0.19),
                 blurRadius: 50,
                 spreadRadius: 4,
                 offset: const Offset(0, 10),
@@ -116,7 +116,7 @@ class _TrainerBottomNavScreenState extends State<TrainerBottomNavScreen> {
         width: 60.w,
         height: 60.h,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.actionPrimary.withOpacity(0.08) : Colors.transparent,
+          color: isSelected ? AppColors.actionPrimary.withValues(alpha: 0.08) : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
         ),
         child: Stack(

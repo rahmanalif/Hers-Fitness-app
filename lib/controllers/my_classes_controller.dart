@@ -25,10 +25,44 @@ class MyClassesController extends GetxController {
   final isSaving = false.obs;
   String? _trainerUserId;
 
+  // Dashboard
+  final dashboardStats = Rxn<Map<String, dynamic>>();
+  final nextClass = Rxn<Map<String, dynamic>>();
+  final todayClasses = <Map<String, dynamic>>[].obs;
+  final isDashboardLoading = false.obs;
+
   @override
   void onInit() {
     super.onInit();
     fetchClasses();
+    fetchDashboardData();
+  }
+
+  Future<void> fetchDashboardData() async {
+    try {
+      isDashboardLoading.value = true;
+      final today = DateTime.now();
+      final dateStr =
+          '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+      final results = await Future.wait([
+        _trainerClassService.getDashboardStats(),
+        _trainerClassService.getNextClass(),
+        _trainerClassService.getTodayClasses(dateStr),
+      ]);
+
+      dashboardStats.value = results[0] as Map<String, dynamic>;
+
+      final next = results[1] as TrainerClassModel?;
+      nextClass.value = next?.toUiMap();
+
+      final today2 = results[2] as List<TrainerClassModel>;
+      todayClasses.assignAll(today2.map((c) => c.toUiMap()));
+    } catch (_) {
+      // Silently fail — dashboard degrades gracefully
+    } finally {
+      isDashboardLoading.value = false;
+    }
   }
 
   Future<void> fetchClasses({bool showError = false}) async {

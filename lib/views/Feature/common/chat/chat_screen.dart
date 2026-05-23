@@ -339,49 +339,39 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: Row(
         children: [
-          Obx(() {
-            final enabled = controller.canPickImage;
-            return GestureDetector(
-              onTap: enabled ? _showImageSourceSheet : null,
-              child: Container(
-                width: 46.w,
-                height: 54.w,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: AppColors.borderSecondary),
-                ),
-                child: Center(
-                  child: controller.isSendingImage.value
-                      ? SizedBox(
-                          width: 18.w,
-                          height: 18.w,
-                          child: CircularProgressIndicator(
-                            color: AppColors.actionPrimary,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Icon(
-                          Icons.image_outlined,
-                          color: enabled
-                              ? AppColors.textPrimary
-                              : AppColors.textTertiary,
-                          size: 23.sp,
-                        ),
-                ),
-              ),
-            );
-          }),
-          SizedBox(width: 10.w),
           Expanded(
-            child: CustomTextField(
-              controller: controller.messageController,
-              hintText: 'Type a message...',
-              filColor: Colors.white,
-              borderColor: AppColors.borderSecondary,
-              maxLines: 3,
-              onSubmitted: (_) => controller.sendMessage(),
-            ),
+            child: Obx(() {
+              final enabled = controller.canPickImage;
+              return CustomTextField(
+                controller: controller.messageController,
+                hintText: 'Type a message...',
+                filColor: Colors.white,
+                borderColor: const Color(0xFFEBEBEB),
+                borderRadius: 20.r,
+                maxLines: 1,
+                onSubmitted: (_) => controller.sendMessage(),
+                suffixIcon: GestureDetector(
+                  onTap: enabled ? _showImageSourceSheet : null,
+                  child: Container(
+                    padding: EdgeInsets.all(10.r),
+                    child: controller.isSendingImage.value
+                        ? SizedBox(
+                            width: 18.w,
+                            height: 18.w,
+                            child: CircularProgressIndicator(
+                              color: AppColors.actionPrimary,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Icon(
+                            Icons.camera_alt_outlined,
+                            color: AppColors.textTertiary,
+                            size: 24.sp,
+                          ),
+                  ),
+                ),
+              );
+            }),
           ),
           SizedBox(width: 12.w),
           Obx(() {
@@ -389,17 +379,17 @@ class _ChatScreenState extends State<ChatScreen> {
             return GestureDetector(
               onTap: enabled ? () => controller.sendMessage() : null,
               child: Container(
-                width: 54.w,
-                height: 54.w,
+                width: 56.w,
+                height: 56.w,
                 decoration: BoxDecoration(
-                  color: enabled ? Colors.black : AppColors.borderPrimary,
-                  borderRadius: BorderRadius.circular(12.r),
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(16.r),
                 ),
                 child: Center(
                   child: controller.isSending.value
                       ? SizedBox(
-                          width: 18.w,
-                          height: 18.w,
+                          width: 20.w,
+                          height: 20.w,
                           child: const CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2,
@@ -408,9 +398,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       : Transform.rotate(
                           angle: -0.5,
                           child: Icon(
-                            Icons.send_outlined,
+                            Icons.send_rounded,
                             color: Colors.white,
-                            size: 22.sp,
+                            size: 24.sp,
                           ),
                         ),
                 ),

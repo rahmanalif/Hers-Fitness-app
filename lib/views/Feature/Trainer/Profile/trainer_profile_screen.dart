@@ -221,7 +221,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
               child: Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -586,7 +586,7 @@ class _HeaderCircleButton extends StatelessWidget {
               offset: const Offset(0, 3),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -623,7 +623,7 @@ class _ProfileStatCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFF2F2F2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, 1),
             blurRadius: 1,
             spreadRadius: 0,
