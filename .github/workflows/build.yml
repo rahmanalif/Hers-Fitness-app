@@ -2,45 +2,39 @@ name: Build Flutter APK
 
 on:
   push:
-    branches: [ main ]        # triggers on every push to main
-  workflow_dispatch:           # also allows manual trigger from GitHub UI
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Pull your repo code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Install Java (required for Android build)
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # 3. Install Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'   # change to your Flutter version
+          flutter-version: '3.32.0'
           channel: 'stable'
-          cache: true                  # caches Flutter to speed up future builds
+          cache: true
 
-      # 4. Install your app's dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 5. Build the APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 6. Upload APK so you can download it
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30           # APK stays available for 30 days
+          retention-days: 30
