@@ -17,8 +17,10 @@ class MyClassesController extends GetxController {
   final UserService? _userService;
 
   final RxList<Map<String, dynamic>> classes = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> completedClasses = <Map<String, dynamic>>[].obs;
   final availability = Rxn<TrainerAvailabilityResponse>();
   final selectedSection = MyClassesSection.classes.obs;
+  final isHistoryLoading = false.obs;
   final focusedMonth = DateTime(DateTime.now().year, DateTime.now().month).obs;
   final isLoading = false.obs;
   final isAvailabilityLoading = false.obs;
@@ -97,6 +99,42 @@ class MyClassesController extends GetxController {
         availability.value == null &&
         !isAvailabilityLoading.value) {
       fetchAvailability(showError: true);
+    }
+    if (section == MyClassesSection.history &&
+        completedClasses.isEmpty &&
+        !isHistoryLoading.value) {
+      fetchClassHistory(showError: true);
+    }
+  }
+
+  /// Fetches active + completed classes and splits them by status.
+  Future<void> fetchClassHistory({bool showError = false}) async {
+    try {
+      isHistoryLoading.value = true;
+      final all = await _trainerClassService.getClasses(includeCompleted: true);
+      // Active classes stay in [classes]; completed go into [completedClasses]
+      final active = all.where((c) => c.status.toUpperCase() != 'COMPLETED');
+      final completed = all.where((c) => c.status.toUpperCase() == 'COMPLETED');
+      classes.assignAll(active.map((c) => c.toUiMap()));
+      completedClasses.assignAll(completed.map((c) => c.toUiMap()));
+    } on ApiException catch (error) {
+      if (showError) {
+        showAppSnackbar(
+          'History failed',
+          error.message,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } catch (_) {
+      if (showError) {
+        showAppSnackbar(
+          'History failed',
+          'Could not load class history.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } finally {
+      isHistoryLoading.value = false;
     }
   }
 
@@ -347,4 +385,4 @@ class MyClassesController extends GetxController {
   }
 }
 
-enum MyClassesSection { classes, availability }
+enum MyClassesSection { classes, availability, history }

@@ -91,6 +91,7 @@ class MemberMyClassesScreen extends StatelessWidget {
                               trainerUserId: trainerUserId,
                               existingReview: existingReview,
                             ),
+                            onCheckIn: () => controller.checkIn(bookingId),
                             onComplete: () => controller.completeBooking(bookingId),
                             onAccept: () => controller.acceptReschedule(bookingId),
                             onReschedule: () =>
@@ -602,6 +603,7 @@ class _ClassScheduleCard extends StatelessWidget {
   final Map<String, dynamic> schedule;
   final bool isSubmitting;
   final VoidCallback onFeedback;
+  final VoidCallback onCheckIn;
   final VoidCallback onComplete;
   final VoidCallback onAccept;
   final VoidCallback onReschedule;
@@ -610,6 +612,7 @@ class _ClassScheduleCard extends StatelessWidget {
     required this.schedule,
     required this.isSubmitting,
     required this.onFeedback,
+    required this.onCheckIn,
     required this.onComplete,
     required this.onAccept,
     required this.onReschedule,
@@ -696,6 +699,7 @@ class _ClassScheduleCard extends StatelessWidget {
             schedule: schedule,
             isSubmitting: isSubmitting,
             onFeedback: onFeedback,
+            onCheckIn: onCheckIn,
             onComplete: onComplete,
             onAccept: onAccept,
             onReschedule: onReschedule,
@@ -773,6 +777,7 @@ class _CardActions extends StatelessWidget {
   final Map<String, dynamic> schedule;
   final bool isSubmitting;
   final VoidCallback onFeedback;
+  final VoidCallback onCheckIn;
   final VoidCallback onComplete;
   final VoidCallback onAccept;
   final VoidCallback onReschedule;
@@ -781,6 +786,7 @@ class _CardActions extends StatelessWidget {
     required this.schedule,
     required this.isSubmitting,
     required this.onFeedback,
+    required this.onCheckIn,
     required this.onComplete,
     required this.onAccept,
     required this.onReschedule,
@@ -794,6 +800,8 @@ class _CardActions extends StatelessWidget {
     final showAcceptReschedule = schedule['showAcceptReschedule'] == true;
     final showReview = schedule['showReview'] == true;
     final showEditReview = schedule['showEditReview'] == true;
+    final showCheckIn = schedule['showCheckIn'] == true;
+    final checkInEnabled = schedule['showCheckInEnabled'] == true;
 
     if (showReview || showEditReview) {
       return _CardButton(
@@ -820,6 +828,18 @@ class _CardActions extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textSecondary,
         bordered: true,
+      );
+    }
+
+    if (showCheckIn) {
+      return _CardButton(
+        label: 'Check In',
+        backgroundColor: checkInEnabled
+            ? AppColors.actionSecondary
+            : AppColors.actionSecondary.withValues(alpha: 0.4),
+        foregroundColor: Colors.white,
+        isLoading: isSubmitting,
+        onTap: (checkInEnabled && !isSubmitting) ? onCheckIn : null,
       );
     }
 

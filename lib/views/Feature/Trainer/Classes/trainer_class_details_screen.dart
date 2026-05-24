@@ -814,7 +814,7 @@ class _TrainerBookingButton extends StatelessWidget {
         width: double.infinity,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: AppColors.actionPrimary,
+          color: AppColors.actionSecondary,
           borderRadius: BorderRadius.circular(8.r),
         ),
         child: isLoading

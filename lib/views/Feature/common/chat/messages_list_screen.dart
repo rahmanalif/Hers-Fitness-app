@@ -10,8 +10,19 @@ import '../../../Base/CustomTextfield/CustomTextfield.dart';
 import '../../../../controllers/common/chat_controller.dart';
 import 'chat_screen.dart';
 
-class MessagesListScreen extends StatelessWidget {
+class MessagesListScreen extends StatefulWidget {
   const MessagesListScreen({super.key});
+
+  @override
+  State<MessagesListScreen> createState() => _MessagesListScreenState();
+}
+
+class _MessagesListScreenState extends State<MessagesListScreen> {
+  // Prevents a rapid double-tap from pushing two ChatScreen instances onto the
+  // navigation stack.  Two screens sharing the singleton ChatController would
+  // each call openConversation — the second call clears the already-loaded
+  // messages and triggers the "No messages yet." flash.
+  bool _isNavigating = false;
 
   Future<void> _goHome() async {
     final role = (await TokenStorage().getUserRole())?.toLowerCase();
@@ -20,6 +31,14 @@ class MessagesListScreen extends StatelessWidget {
     } else {
       Get.offAllNamed(AppRoutes.memberBottomNavScreen);
     }
+  }
+
+  void _openChat(ChatContact contact) {
+    if (_isNavigating) return;
+    setState(() => _isNavigating = true);
+    Get.to(() => ChatScreen(contact: contact))?.whenComplete(() {
+      if (mounted) setState(() => _isNavigating = false);
+    });
   }
 
   @override
@@ -201,9 +220,7 @@ class MessagesListScreen extends StatelessWidget {
 
   Widget _buildContactItem(ChatContact contact, ChatController controller) {
     return GestureDetector(
-      onTap: () {
-        Get.to(() => ChatScreen(contact: contact));
-      },
+      onTap: () => _openChat(contact),
       child: Container(
         margin: EdgeInsets.only(bottom: 10.h),
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),

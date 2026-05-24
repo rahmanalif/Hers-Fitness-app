@@ -1,5 +1,4 @@
 import 'package:fitness/utils/AppColor/app_colors.dart';
-import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -71,16 +70,19 @@ class TrainerCard extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: AppTextStyles.base16Medium.copyWith(
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     SizedBox(height: 4.h),
                     Text(
                       price,
-                      style: AppTextStyles.sm14Medium.copyWith(
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
                         color: AppColors.textSecondary,
-                        fontSize: 15.sp,
                       ),
                     ),
                     SizedBox(height: 8.h),
@@ -95,7 +97,9 @@ class TrainerCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             expertise,
-                            style: AppTextStyles.sm14Medium.copyWith(
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                               color: AppColors.textPrimary,
                             ),
                             maxLines: 1,
@@ -121,7 +125,9 @@ class TrainerCard extends StatelessWidget {
                           SizedBox(width: 4.w),
                           Text(
                             distance!,
-                            style: AppTextStyles.sm14Medium.copyWith(
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                               color: AppColors.textPrimary,
                             ),
                           ),
@@ -136,19 +142,19 @@ class TrainerCard extends StatelessWidget {
                           if (rating >= starValue) {
                             return Icon(
                               Icons.star,
-                              size: 18.sp,
+                              size: 16.sp,
                               color: Colors.orange,
                             );
                           } else if (rating >= starValue - 0.5) {
                             return Icon(
                               Icons.star_half,
-                              size: 18.sp,
+                              size: 16.sp,
                               color: Colors.orange,
                             );
                           } else {
                             return Icon(
                               Icons.star_border,
-                              size: 18.sp,
+                              size: 16.sp,
                               color: Colors.orange,
                             );
                           }
@@ -156,7 +162,9 @@ class TrainerCard extends StatelessWidget {
                         SizedBox(width: 8.w),
                         Text(
                           "$rating",
-                          style: AppTextStyles.sm14Bold.copyWith(
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -164,11 +172,32 @@ class TrainerCard extends StatelessWidget {
                           SizedBox(width: 4.w),
                           Text(
                             "($reviewCount)",
-                            style: AppTextStyles.sm14Regular.copyWith(
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
                               color: AppColors.textTertiary,
                             ),
                           ),
                         ],
+                      ],
+                    ),
+                    SizedBox(height: 8.h),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.language,
+                          size: 18,
+                          color: AppColors.textTertiary,
+                        ),
+                        SizedBox(width: 6.w),
+                        const Text(
+                          "Available Remotely",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ],

@@ -270,8 +270,8 @@ class _ActionButtons extends StatelessWidget {
     if (actions.canMarkComplete) {
       buttons.add(_ActionButton(
         label: 'Mark Complete',
-        color: AppColors.statusSuccess,
-        background: AppColors.statusSuccessSubtle,
+        color: Colors.white,
+        background: AppColors.actionSecondary,
         icon: Icons.check_circle_outline,
         onTap: isActionLoading ? null : onMarkComplete,
         isLoading: isActionLoading,

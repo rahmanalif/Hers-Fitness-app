@@ -22,6 +22,14 @@ class UserProfileModel {
   final String? dietPreference;
   final String? coverPhotoUrl;
 
+  // ── Trainer-specific fields ──────────────────────────────────────────────
+  final List<String>? fitnessClasses;
+  final String? instructorDuration;
+  final String? certifications;
+  final String? sessionFormat;
+  final double? baseLocationLat;
+  final double? baseLocationLng;
+
   const UserProfileModel({
     this.id,
     this.trainerUserId,
@@ -42,6 +50,12 @@ class UserProfileModel {
     this.weightUnit,
     this.dietPreference,
     this.coverPhotoUrl,
+    this.fitnessClasses,
+    this.instructorDuration,
+    this.certifications,
+    this.sessionFormat,
+    this.baseLocationLat,
+    this.baseLocationLng,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -133,6 +147,24 @@ class UserProfileModel {
         _readString(source, const ['coverPhotoUrl', 'cover_photo_url', 'coverPhoto']) ??
         _readString(profile, const ['coverPhotoUrl', 'cover_photo_url', 'coverPhoto']),
       ),
+      fitnessClasses:
+          _readStringList(source, const ['fitnessClasses', 'fitness_classes']) ??
+          _readStringList(profile, const ['fitnessClasses', 'fitness_classes']),
+      instructorDuration:
+          _readString(source, const ['instructorDuration', 'instructor_duration']) ??
+          _readString(profile, const ['instructorDuration', 'instructor_duration']),
+      certifications:
+          _readString(source, const ['certifications']) ??
+          _readString(profile, const ['certifications']),
+      sessionFormat:
+          _readString(source, const ['sessionFormat', 'session_format']) ??
+          _readString(profile, const ['sessionFormat', 'session_format']),
+      baseLocationLat:
+          _readDouble(source, const ['baseLocationLat', 'base_location_lat', 'baseLatitude', 'base_latitude']) ??
+          _readDouble(profile, const ['baseLocationLat', 'base_location_lat', 'baseLatitude', 'base_latitude']),
+      baseLocationLng:
+          _readDouble(source, const ['baseLocationLng', 'base_location_lng', 'baseLongitude', 'base_longitude']) ??
+          _readDouble(profile, const ['baseLocationLng', 'base_location_lng', 'baseLongitude', 'base_longitude']),
     );
   }
 
@@ -246,6 +278,25 @@ class UserProfileModel {
         _readNestedImageUrl(source) ?? _readNestedImageUrl(profile);
 
     return normalizeImageUrl(directValue ?? nestedValue);
+  }
+
+  static List<String>? _readStringList(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      if (value is List) {
+        final list = value
+            .where((e) => e != null)
+            .map((e) => e.toString().trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (list.isNotEmpty) return list;
+      }
+    }
+    return null;
   }
 
   static int? _readInt(Map<String, dynamic> json, List<String> keys) {

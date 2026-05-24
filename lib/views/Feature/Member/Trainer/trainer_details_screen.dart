@@ -66,7 +66,6 @@ class TrainerDetailsScreen extends StatelessWidget {
           : "https://images.unsplash.com/photo-1518611012118-29a88f5573ce?q=80&w=800&auto=format&fit=crop";
       final name = trainer['name']?.toString() ?? 'Trainer';
       final priceRange = _heroPriceRange(trainer['priceRange']);
-      final locationLabel = trainer['locationLabel']?.toString();
       final distance = _heroDistance(trainer['distanceMeters']);
 
       return Stack(
@@ -135,32 +134,36 @@ class TrainerDetailsScreen extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: AppTextStyles.base16Medium.copyWith(
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
                     color: Colors.white,
-                    fontSize: 26.sp,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  priceRange,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white,
                   ),
                 ),
                 SizedBox(height: 12.h),
-                Wrap(
-                  spacing: 10.w,
-                  runSpacing: 8.h,
+                Row(
                   children: [
-                    _buildHeroInfoItem(
-                      Icons.payments_outlined,
-                      'Avg. price',
-                      priceRange,
+                    Flexible(
+                      child: _buildInfoItem(
+                        Icons.monitor_heart_outlined,
+                        trainer['expertise']?.toString() ?? 'Trainer',
+                      ),
                     ),
-                    _buildHeroInfoItem(
-                      Icons.location_on_outlined,
-                      'Location',
-                      locationLabel != null && locationLabel.isNotEmpty
-                          ? locationLabel
-                          : 'Location unavailable',
-                    ),
-                    _buildHeroInfoItem(
-                      Icons.near_me_outlined,
-                      'Distance',
-                      distance,
+                    SizedBox(width: 16.w),
+                    Flexible(
+                      child: _buildInfoItem(
+                        Icons.near_me_outlined,
+                        distance,
+                      ),
                     ),
                   ],
                 ),
@@ -191,6 +194,28 @@ class TrainerDetailsScreen extends StatelessWidget {
         ],
       );
     });
+  }
+
+  Widget _buildInfoItem(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18.sp, color: Colors.white.withValues(alpha: 0.8)),
+        SizedBox(width: 6.w),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _startTrainerChat() async {
@@ -233,45 +258,6 @@ class TrainerDetailsScreen extends StatelessWidget {
     if (meters < 1000) return '${meters.round()} meters away';
     final km = meters / 1000;
     return '${km.toStringAsFixed(km >= 10 ? 0 : 1)} km away';
-  }
-
-  Widget _buildHeroInfoItem(IconData icon, String label, String value) {
-    return SizedBox(
-      width: 142.w,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: AppColors.actionPrimary, size: 16.sp),
-          SizedBox(width: 6.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.xxs9Regular.copyWith(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    letterSpacing: 0,
-                  ),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.xs12SemiBold.copyWith(
-                    color: Colors.white,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildStatsCard() {

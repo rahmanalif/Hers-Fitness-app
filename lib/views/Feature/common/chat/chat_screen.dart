@@ -23,6 +23,11 @@ class _ChatScreenState extends State<ChatScreen> {
   late final Worker _messagesWorker;
   final ScrollController _scrollController = ScrollController();
 
+  // True until the first batch of messages has been scrolled into view.
+  // The scroll guard (distanceFromBottom > threshold) is intentionally
+  // skipped on the very first load so the list always opens at the bottom.
+  bool _isInitialScroll = true;
+
   @override
   void initState() {
     super.initState();
@@ -516,8 +521,33 @@ class _ChatScreenState extends State<ChatScreen> {
   void _scrollToBottomIfNeeded() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
+
+      // messages.clear() (called at the start of fetchMessages to wipe stale
+      // content from the previous conversation) also fires this worker.
+      // If the list is empty there is nothing to scroll to, and — critically —
+      // we must NOT consume _isInitialScroll here; it must stay true so that
+      // the real messages, arriving moments later, still get the initial jump.
+      if (controller.messages.isEmpty) return;
+
       final position = _scrollController.position;
       final distanceFromBottom = position.maxScrollExtent - position.pixels;
+
+      // On the very first load the list starts at pixels=0 (top) while
+      // maxScrollExtent is the full content height, so distanceFromBottom is
+      // large. Without the _isInitialScroll bypass the guard below would
+      // treat this as "user scrolled up intentionally" and skip the scroll,
+      // leaving the chat stuck at the oldest message instead of the newest.
+      if (_isInitialScroll) {
+        _isInitialScroll = false;
+        // jumpTo is more reliable than animateTo here: the list has just been
+        // built and animating from 0 to max can occasionally stutter or land
+        // short on the first frame.
+        _scrollController.jumpTo(position.maxScrollExtent);
+        return;
+      }
+
+      // For subsequent incoming messages: only auto-scroll if the user is
+      // already near the bottom (i.e. they haven't scrolled up to read history).
       if (distanceFromBottom > 180 && controller.messages.length > 1) return;
 
       _scrollController.animateTo(

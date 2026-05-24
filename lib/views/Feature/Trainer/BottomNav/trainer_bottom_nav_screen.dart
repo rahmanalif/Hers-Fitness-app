@@ -54,7 +54,16 @@ class _TrainerBottomNavScreenState extends State<TrainerBottomNavScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      // Allow the system to pop only when we're already on the Home tab.
+      // On any other tab the back gesture is intercepted and we go to Home.
+      canPop: selectedIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          setState(() => selectedIndex = 0);
+        }
+      },
+      child: Scaffold(
       backgroundColor: AppColors.bgPrimary,
       extendBody: false,
       body: _pages[selectedIndex],
@@ -85,12 +94,13 @@ class _TrainerBottomNavScreenState extends State<TrainerBottomNavScreen> {
             child: BottomAppBar(
               elevation: 0,
               color: Colors.white,
+              padding: EdgeInsets.zero,
               shape: CustomNotchedRectangle(16.w),
               notchMargin: 10,
               child: SizedBox(
                 height: 75.h,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildNavItem(icon: Icons.home_filled, index: 0),
                     _buildNavItem(icon: Icons.fitness_center_rounded, index: 1),
@@ -104,7 +114,8 @@ class _TrainerBottomNavScreenState extends State<TrainerBottomNavScreen> {
           ),
         ),
       ),
-    );
+    ),   // Scaffold
+    );   // PopScope
   }
 
   Widget _buildNavItem({required IconData icon, required int index}) {

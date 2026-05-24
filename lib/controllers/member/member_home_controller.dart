@@ -228,6 +228,8 @@ class MemberHomeController extends GetxController {
     bool showError = false,
     bool fallbackToAll = false,
   }) async {
+    // Guard against concurrent calls (e.g. double widget instantiation).
+    if (isLoadingTrainers.value) return;
     try {
       isLoadingTrainers.value = true;
       final position = lat != null && lng != null

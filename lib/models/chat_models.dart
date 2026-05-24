@@ -62,9 +62,24 @@ class ChatMessageModel {
     return ChatMessageModel(
       id: _readString(data, const ['id', 'messageId', 'message_id']) ?? '',
       conversationId:
-          _readString(data, const ['conversationId', 'conversation_id']) ?? '',
+          _readString(data, const [
+            'conversationId',
+            'conversation_id',
+            'chatConversationId',
+            'chat_conversation_id',
+          ]) ??
+          '',
       senderUserId:
-          _readString(data, const ['senderUserId', 'sender_user_id']) ??
+          _readString(data, const [
+            'senderUserId',
+            'sender_user_id',
+            'senderId',
+            'sender_id',
+            'fromUserId',
+            'from_user_id',
+            'userId',
+            'user_id',
+          ]) ??
           _readString(sender, const ['id', 'userId', 'user_id']) ??
           '',
       messageType:
@@ -72,7 +87,15 @@ class ChatMessageModel {
                   'TEXT')
               .toUpperCase(),
       text:
-          _readString(data, const ['text', 'message', 'content', 'body']) ?? '',
+          _readString(data, const [
+            'text',
+            'message',
+            'messageText',
+            'message_text',
+            'content',
+            'body',
+          ]) ??
+          '',
       attachmentUrl: normalizeImageUrl(
         _readString(data, const ['attachmentUrl', 'attachment_url']),
       ),
@@ -81,7 +104,13 @@ class ChatMessageModel {
         'attachment_type',
       ]),
       seenAt: _readDate(data, const ['seenAt', 'seen_at']),
-      createdAt: _readDate(data, const ['createdAt', 'created_at', 'sentAt']),
+      createdAt: _readDate(data, const [
+        'createdAt',
+        'created_at',
+        'sentAt',
+        'sent_at',
+        'timestamp',
+      ]),
       raw: data,
     );
   }
@@ -184,28 +213,61 @@ List<Map<String, dynamic>> readListPayload(
   }
 
   if (response is Map) {
-    final map = _stringMap(response);
-    final data = map['data'];
+    return _readListFromMap(_stringMap(response), keys, <int>{});
+  }
 
-    if (data is List) {
-      return data.whereType<Map>().map(_stringMap).toList();
-    }
-    if (data is Map) {
-      final dataMap = _stringMap(data);
-      for (final key in keys) {
-        final value = dataMap[key];
-        if (value is List) {
-          return value.whereType<Map>().map(_stringMap).toList();
-        }
-      }
-      return readListPayload(dataMap, keys);
-    }
+  return const <Map<String, dynamic>>[];
+}
 
-    for (final key in keys) {
-      final value = map[key];
-      if (value is List) {
-        return value.whereType<Map>().map(_stringMap).toList();
-      }
+List<Map<String, dynamic>> _readListFromMap(
+  Map<String, dynamic> map,
+  List<String> keys,
+  Set<int> visited,
+) {
+  final identity = identityHashCode(map);
+  if (!visited.add(identity)) return const <Map<String, dynamic>>[];
+
+  for (final key in keys) {
+    final value = map[key];
+    if (value is List) return value.whereType<Map>().map(_stringMap).toList();
+    if (value is Map) {
+      final nested = _readListFromMap(_stringMap(value), keys, visited);
+      if (nested.isNotEmpty) return nested;
+    }
+  }
+
+  for (final key in const [
+    'data',
+    'conversation',
+    'message',
+    'item',
+    'result',
+  ]) {
+    final value = map[key];
+    if (value is List) return value.whereType<Map>().map(_stringMap).toList();
+    if (value is Map) {
+      final nested = _readListFromMap(_stringMap(value), keys, visited);
+      if (nested.isNotEmpty) return nested;
+    }
+  }
+
+  for (final value in map.values) {
+    if (value is Map) {
+      final nested = _readListFromMap(_stringMap(value), keys, visited);
+      if (nested.isNotEmpty) return nested;
+    }
+  }
+
+  // Last-resort fallback: backend sometimes stores the list under an
+  // unexpected key (e.g. "rows", "list", "chatHistory").  After all
+  // known-key and Map-recursion attempts have failed, return the first
+  // non-empty list of objects found in the remaining values.  We only
+  // return lists whose items are Maps (i.e. JSON objects) so that
+  // incidental primitive arrays (IDs, tags, etc.) are ignored.
+  for (final value in map.values) {
+    if (value is List) {
+      final list = value.whereType<Map>().map(_stringMap).toList();
+      if (list.isNotEmpty) return list;
     }
   }
 

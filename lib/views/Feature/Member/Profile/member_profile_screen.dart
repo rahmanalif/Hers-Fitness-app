@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fitness/controllers/member/member_profile_controller.dart';
 import 'package:fitness/views/Base/CustomAppbar/custom_appbar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:fitness/views/Base/AppText/appText.dart';
@@ -82,10 +83,16 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                   title: Text(monthName),
                   selected: selectedMonth == index + 1,
                   onTap: () {
+                    final newMonth = index + 1;
                     setState(() {
-                      selectedMonth = index + 1;
+                      selectedMonth = newMonth;
                     });
                     Navigator.pop(context);
+                    _profileController.fetchDailyActivity(
+                      month: newMonth,
+                      year: selectedYear,
+                      showError: true,
+                    );
                   },
                 );
               },
@@ -183,6 +190,8 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                       ? const NetworkImage(
                         "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop",
                       ) as ImageProvider
+                      : _profileController.coverPhotoUrl.value.startsWith('http')
+                      ? NetworkImage(_profileController.coverPhotoUrl.value)
                       : FileImage(File(_profileController.coverPhotoUrl.value)),
                   fit: BoxFit.cover,
                 ),
@@ -416,6 +425,12 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                   });
                   if (period == "Weekly") {
                     _profileController.fetchActivity(showError: true);
+                  } else if (period == "Monthly") {
+                    _profileController.fetchDailyActivity(
+                      month: selectedMonth,
+                      year: selectedYear,
+                      showError: true,
+                    );
                   } else if (period == "Yearly") {
                     _profileController.fetchMonthlyActivity(
                       selectedYear,
@@ -575,13 +590,20 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
           )
           .toList();
     } else if (selectedPeriod == "Monthly") {
-      int daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
-      return List.generate(daysInMonth, (index) {
-        return _ActivityBarData(
-          "${index + 1}",
-          65 + (index % 5) * 6.0,
+      final days = _profileController.dailyActivity.value?.days;
+      if (days == null || days.isEmpty) {
+        final daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
+        return List.generate(
+          daysInMonth,
+          (index) => _ActivityBarData('${index + 1}', 0),
         );
-      });
+      }
+      return days
+          .map((day) => _ActivityBarData(
+                '${day.day}',
+                day.activityPercentage.toDouble(),
+              ))
+          .toList();
     }
 
     final months = _profileController.monthlyActivity.value?.months ?? const [];
@@ -605,13 +627,13 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
       if (days.isEmpty) return const ["M", "T", "W", "T", "F", "S", "S"];
       return days.map((day) => day.shortLabel).toList();
     } else if (selectedPeriod == "Monthly") {
-      int daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
+      final apiDays = _profileController.dailyActivity.value?.days;
+      final daysInMonth = apiDays?.length ??
+          DateTime(selectedYear, selectedMonth + 1, 0).day;
       return List.generate(daysInMonth, (index) {
-        int day = index + 1;
-        if (day == 1 || day % 5 == 0 || day == daysInMonth) {
-          return "$day";
-        }
-        return "";
+        final day = index + 1;
+        if (day == 1 || day % 5 == 0 || day == daysInMonth) return '$day';
+        return '';
       });
     }
 
@@ -631,15 +653,15 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
           _buildStatCard(
             icon: Icons.calendar_month,
             iconColor: AppColors.actionPrimary,
-            value: _profileController.age,
-            unit: "yr",
+            value: _profileController.ageValue,
+            unit: _profileController.ageUnit,
             label: "Current Age",
           ),
           _buildStatCard(
             icon: Icons.monitor_weight,
             iconColor: const Color(0xFF16A34A),
-            value: _profileController.weight,
-            unit: "kg",
+            value: _profileController.weightValue,
+            unit: _profileController.weightUnit,
             label: "Current weight",
           ),
           _buildStatCard(
@@ -689,23 +711,33 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      AppText(
-                        value,
-                        style: AppTextStyles.xl20Bold.copyWith(
-                          color: AppColors.textPrimary,
-                          fontSize: 24.sp,
-                        ),
-                      ),
-                      SizedBox(width: 4.w),
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 4.h),
-                        child: AppText(
-                          unit,
-                          style: AppTextStyles.sm14Medium.copyWith(
-                            color: AppColors.textSecondary,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: AppText(
+                            value,
+                            style: AppTextStyles.xl20Bold.copyWith(
+                              color: AppColors.textPrimary,
+                              fontSize: 24.sp,
+                            ),
+                            maxLines: 1,
                           ),
                         ),
                       ),
+                      if (unit.isNotEmpty) ...[
+                        SizedBox(width: 4.w),
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 4.h),
+                          child: AppText(
+                            unit,
+                            style: AppTextStyles.sm14Medium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
             SizedBox(height: 8.h),
@@ -724,49 +756,79 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
   }
 
   Widget _buildReferFriendButton() {
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F2),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: AppColors.borderSecondary),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(10.w),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.share_outlined,
-              color: const Color(0xFF0284C7),
-              size: 20.sp,
-            ),
-          ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: AppText(
-              "Refer a Friend",
-              style: AppTextStyles.base16Medium.copyWith(
-                color: AppColors.textPrimary,
+    return GestureDetector(
+      onTap: () => _onReferFriendTapped(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2F2F2),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: AppColors.borderSecondary),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.share_outlined,
+                color: const Color(0xFF0284C7),
+                size: 20.sp,
               ),
             ),
-          ),
-          Icon(
-            Icons.arrow_forward_ios_rounded,
-            color: AppColors.textPrimary,
-            size: 16.sp,
-          ),
-        ],
+            SizedBox(width: 16.w),
+            Expanded(
+              child: AppText(
+                "Refer a Friend",
+                style: AppTextStyles.base16Medium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: AppColors.textPrimary,
+              size: 16.sp,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onReferFriendTapped(BuildContext context) async {
+    // Show a loading indicator while fetching
+    Get.dialog(
+      Center(
+        child: CircularProgressIndicator(color: AppColors.actionPrimary),
+      ),
+      barrierDismissible: false,
+    );
+
+    final referral = await _profileController.getReferral();
+
+    if (Get.isDialogOpen == true) Get.back();
+
+    if (referral == null || !context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ReferralBottomSheet(
+        referralCode: referral.referralCode,
+        referralLink: referral.referralLink,
       ),
     );
   }
@@ -850,4 +912,173 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+// ── Referral bottom sheet ─────────────────────────────────────────────────────
+
+class _ReferralBottomSheet extends StatelessWidget {
+  final String referralCode;
+  final String referralLink;
+
+  const _ReferralBottomSheet({
+    required this.referralCode,
+    required this.referralLink,
+  });
+
+  void _copy(BuildContext context, String text, String label) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label copied!'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: AppColors.actionPrimary,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 32.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 48.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: AppColors.borderPrimary,
+                  borderRadius: BorderRadius.circular(100.r),
+                ),
+              ),
+            ),
+            SizedBox(height: 20.h),
+
+            // Title
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.actionPrimary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Icon(
+                    Icons.card_giftcard_rounded,
+                    color: AppColors.actionPrimary,
+                    size: 22.sp,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppText(
+                      'Refer a Friend',
+                      style: AppTextStyles.base16SemiBold.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    AppText(
+                      'Share your code and earn rewards',
+                      style: AppTextStyles.xs12Regular.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 24.h),
+
+            // Referral code
+            AppText(
+              'Your Referral Code',
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            GestureDetector(
+              onTap: () => _copy(context, referralCode, 'Referral code'),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                decoration: BoxDecoration(
+                  color: AppColors.bgPrimary,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppColors.borderPrimary),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppText(
+                      referralCode.isNotEmpty ? referralCode : '—',
+                      style: AppTextStyles.xl20SemiBold.copyWith(
+                        color: AppColors.textPrimary,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.copy_rounded,
+                          size: 18.sp,
+                          color: AppColors.textSecondary,
+                        ),
+                        SizedBox(width: 4.w),
+                        AppText(
+                          'Copy',
+                          style: AppTextStyles.sm14Medium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20.h),
+
+            // Share link button
+            if (referralLink.isNotEmpty)
+              GestureDetector(
+                onTap: () => _copy(context, referralLink, 'Referral link'),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.actionPrimary,
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.link_rounded, color: Colors.white, size: 20.sp),
+                      SizedBox(width: 8.w),
+                      AppText(
+                        'Copy Invite Link',
+                        style: AppTextStyles.base16SemiBold.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

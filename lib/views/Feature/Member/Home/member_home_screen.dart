@@ -9,15 +9,17 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fitness/views/Feature/Member/Home/widgets/trainer_card.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../Helpers/route.dart';
 import '../../../Base/AppText/appText.dart';
+import '../../../Base/app_shimmer.dart';
 
 class MemberHomeScreen extends StatelessWidget {
   MemberHomeScreen({super.key});
 
-  final MemberHomeController controller = Get.put(MemberHomeController());
+  final MemberHomeController controller = Get.isRegistered<MemberHomeController>()
+      ? Get.find<MemberHomeController>()
+      : Get.put(MemberHomeController());
   final MemberProfileController profileController =
       Get.isRegistered<MemberProfileController>()
       ? Get.find<MemberProfileController>()
@@ -147,69 +149,77 @@ class MemberHomeScreen extends StatelessWidget {
     return Obx(() {
       final imageUrl = profileController.profileImageUrl;
       final displayName = profileController.displayName;
-      final firstName = displayName.split(' ').first;
 
       return Container(
         width: double.infinity,
         padding: EdgeInsets.fromLTRB(
-          14.w,
-          MediaQuery.of(context).padding.top + 18.h,
-          14.w,
-          18.h,
+          16.w,
+          MediaQuery.of(context).padding.top + 20.h,
+          16.w,
+          16.h,
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            GestureDetector(
-              onTap: () {
-                Get.toNamed(AppRoutes.memberProfileScreen);
-              },
-              child: Container(
-                width: 44.w,
-                height: 44.w,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.white, width: 2.w),
-                  image: imageUrl.isEmpty
-                      ? null
-                      : DecorationImage(
-                          image: NetworkImage(imageUrl),
-                          fit: BoxFit.cover,
+            Row(
+              children: [
+                // Profile Image
+                GestureDetector(
+                  onTap: () {
+                    Get.toNamed(AppRoutes.memberProfileScreen);
+                  },
+                  child: Container(
+                    width: 50.w,
+                    height: 50.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      image: imageUrl.isEmpty
+                          ? null
+                          : DecorationImage(
+                              image: NetworkImage(imageUrl),
+                              fit: BoxFit.cover,
+                            ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: imageUrl.isEmpty
+                        ? Icon(
+                            Icons.person,
+                            color: AppColors.textTertiary,
+                            size: 28.sp,
+                          )
+                        : null,
+                  ),
                 ),
-                child: imageUrl.isEmpty
-                    ? Icon(
-                        Icons.person,
-                        color: AppColors.textTertiary,
-                        size: 22.sp,
-                      )
-                    : null,
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppText(
-                    "${_greeting()} $firstName",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.base16SemiBold.copyWith(
-                      color: AppColors.textPrimary,
-                      letterSpacing: 0,
+                SizedBox(width: 12.w),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome back",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 4.h),
-                  AppText(
-                    DateFormat('EEE, d MMMM yyyy').format(DateTime.now()),
-                    style: AppTextStyles.sm14Regular.copyWith(
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0,
+                    Text(
+                      displayName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
             GestureDetector(
               onTap: () => Get.toNamed(AppRoutes.notificationScreen),
@@ -224,30 +234,28 @@ class MemberHomeScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          width: 1.w,
-                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.actionPrimary.withValues(
-                              alpha: 0.62,
-                            ),
+                            color: AppColors.actionPrimary,
                             blurRadius: 0,
-                            offset: Offset(0, 3.h),
+                            offset: const Offset(0, 3),
                           ),
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 14.r,
-                            offset: Offset(0, 6.h),
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Center(
                         child: SvgPicture.asset(
                           "assets/icons/notificationIcon.svg",
-                          width: 23.w,
-                          height: 23.w,
+                          width: 24.w,
+                          height: 24.w,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.black,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -256,22 +264,24 @@ class MemberHomeScreen extends StatelessWidget {
                         right: -2.w,
                         top: -2.h,
                         child: Container(
-                          constraints: BoxConstraints(
-                            minWidth: 18.w,
-                            minHeight: 18.w,
-                          ),
-                          padding: EdgeInsets.symmetric(horizontal: 5.w),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 4.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: AppColors.statusError,
                             borderRadius: BorderRadius.circular(999.r),
                             border: Border.all(color: Colors.white, width: 2.w),
                           ),
+                          constraints: BoxConstraints(
+                            minWidth: 16.w,
+                            minHeight: 16.w,
+                          ),
                           child: Center(
                             child: Text(
-                              unreadCount > 99 ? '99+' : unreadCount.toString(),
-                              style: AppTextStyles.xxs9SemiBold.copyWith(
+                              unreadCount.toString(),
+                              style: TextStyle(
                                 color: Colors.white,
-                                height: 1,
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
@@ -298,19 +308,20 @@ class MemberHomeScreen extends StatelessWidget {
               onTap: () => controller.setCategory(category),
               child: Container(
                 margin: EdgeInsets.only(right: 12.w),
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 11.h),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.actionPrimary : Colors.white,
                   borderRadius: BorderRadius.circular(12.r),
                   border: isSelected
                       ? null
-                      : Border.all(color: AppColors.borderPrimary),
+                      : Border.all(color: const Color(0xFFF1F1F1)),
                 ),
                 child: Text(
                   category,
-                  style: AppTextStyles.sm14Medium.copyWith(
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                     color: isSelected ? Colors.white : AppColors.textSecondary,
-                    letterSpacing: 0,
                   ),
                 ),
               ),
@@ -327,21 +338,31 @@ class MemberHomeScreen extends StatelessWidget {
       children: [
         Text(
           title,
-          style: AppTextStyles.sm14SemiBold.copyWith(
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
             color: AppColors.textPrimary,
-            letterSpacing: 0,
           ),
         ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: const BoxDecoration(color: Color(0xffd9d9d9)),
+          ),
+        ),
+        SizedBox(width: 12.w),
         GestureDetector(
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 4.h),
-            child: Text(
+            child: const Text(
               "View all",
-              style: AppTextStyles.xs12Regular.copyWith(
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
                 color: AppColors.actionPrimary,
-                letterSpacing: 0,
               ),
             ),
           ),
@@ -423,17 +444,19 @@ class MemberHomeScreen extends StatelessWidget {
                     const Spacer(),
                     Text(
                       title,
-                      style: AppTextStyles.base16SemiBold.copyWith(
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
                         color: AppColors.textPrimary,
-                        letterSpacing: 0,
                       ),
                     ),
                     SizedBox(height: 4.h),
                     Text(
                       subtitle,
-                      style: AppTextStyles.xs12Regular.copyWith(
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
                         color: AppColors.textSecondary,
-                        letterSpacing: 0,
                       ),
                     ),
                   ],
@@ -472,34 +495,25 @@ class MemberHomeScreen extends StatelessWidget {
   Widget _buildIconLabel(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 16.sp, color: AppColors.actionSecondary),
+        Icon(icon, size: 18.sp, color: AppColors.actionSecondary),
         SizedBox(width: 6.w),
         Text(
           text,
-          style: AppTextStyles.xs12Medium.copyWith(
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
-            letterSpacing: 0,
           ),
         ),
       ],
     );
   }
 
-  String _greeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
-  }
-
   Widget _buildTrainerList() {
     return Obx(() {
       if (controller.isLoadingTrainers.value && controller.trainers.isEmpty) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 24.h),
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.actionPrimary),
-          ),
+        return Column(
+          children: List.generate(3, (index) => const TrainerCardShimmer()),
         );
       }
 

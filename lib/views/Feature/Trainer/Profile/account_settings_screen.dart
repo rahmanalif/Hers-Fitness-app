@@ -1,3 +1,4 @@
+import 'package:fitness/controllers/trainer/trainer_profile_controller.dart';
 import 'package:fitness/controllers/trainer/trainer_location_controller.dart';
 import 'package:fitness/services/auth_service.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
@@ -40,7 +41,11 @@ class AccountSettingsScreen extends StatelessWidget {
                     title: "Notifications settings",
                     onTap: () => Get.toNamed(AppRoutes.notificationSettingsScreen),
                   ),
-                  _buildSettingItem(icon: Icons.credit_card_rounded, title: "Transactions", onTap: () {}),
+                  _buildSettingItem(
+                    icon: Icons.credit_card_rounded,
+                    title: "Transactions",
+                    onTap: () => Get.toNamed(AppRoutes.trainerTransactionsScreen),
+                  ),
 
                   SizedBox(height: 24.h),
                   _buildSectionTitle("Location"),
@@ -117,7 +122,13 @@ class AccountSettingsScreen extends StatelessWidget {
                   color: const Color(0xFFFEF2F2),
                   shape: BoxShape.circle,
                 ),
-                child: SvgPicture.asset("assets/icons/deleteIcon.svg", color: Colors.redAccent),
+                child: SvgPicture.asset(
+                "assets/icons/deleteIcon.svg",
+                colorFilter: const ColorFilter.mode(
+                  Colors.redAccent,
+                  BlendMode.srcIn,
+                ),
+              ),
               ),
               SizedBox(height: 16.h),
               AppText(
@@ -147,9 +158,30 @@ class AccountSettingsScreen extends StatelessWidget {
                   SizedBox(width: 12.w),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.of(context).pop();
-                        // Handle delete logic here
+                        final ctrl = Get.isRegistered<TrainerProfileController>()
+                            ? Get.find<TrainerProfileController>()
+                            : Get.put(TrainerProfileController());
+
+                        Get.dialog(
+                          Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.actionPrimary,
+                            ),
+                          ),
+                          barrierDismissible: false,
+                        );
+
+                        final success = await ctrl.deleteAccount();
+                        if (Get.isDialogOpen == true) Get.back();
+
+                        if (success) {
+                          try {
+                            await AuthService().logout();
+                          } catch (_) {}
+                          Get.offAllNamed(AppRoutes.signInScreen);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFEF4444),

@@ -17,6 +17,7 @@ class ApiEndpoints {
   static const memberWeeklyActivity = '/api/users/member/weekly-activity';
   static const memberMonthlyActivity = '/api/users/member/monthly-activity';
   static const memberYearlyActivity = '/api/users/member/yearly-activity';
+  static const memberDailyActivity = '/api/users/member/daily-activity';
   static const memberAssessment = '/api/users/member-assessment';
   static const memberUpdateProfile = '/api/users/member/profile';
   static const memberProfileImages = '/api/users/member/profile/images';
@@ -24,8 +25,13 @@ class ApiEndpoints {
   static const memberReferral = '/api/users/member/referral';
   static const memberAccount = '/api/users/member/account';
   static String staticContent(String key) => '/api/static-content/$key';
+  static const helpTickets = '/api/help-tickets';
+  static const helpTicketsMy = '/api/help-tickets/my';
+  static String helpTicketById(String id) => '/api/help-tickets/my/$id';
   static const trainerClasses = '/api/trainer/classes';
   static const trainerDashboardStats = '/api/trainer/dashboard/stats';
+  static const trainerDashboardEarnings = '/api/trainer/dashboard/earnings';
+  static const trainerDashboardTopClasses = '/api/trainer/dashboard/top-classes';
   static const trainerNextClass = '/api/trainer/classes/next';
   static String trainerClassById(String id) => '/api/trainer/classes/$id';
   static String trainerClassReschedule(String id) =>
@@ -58,6 +64,20 @@ class ApiEndpoints {
       '/api/member/bookings/$id/reschedule/accept';
   static String memberBookingComplete(String id) =>
       '/api/member/bookings/$id/complete';
+  static String memberBookingCheckIn(String id) =>
+      '/api/member/bookings/$id/check-in';
+  // ── Trainer profile management ────────────────────────────────────────────
+  static const trainerUpdateProfile = '/api/users/trainer/profile';
+  static const trainerProfileImages = '/api/users/trainer/profile/images';
+  static const trainerTransactions = '/api/users/trainer/transactions';
+  static const trainerAccount = '/api/users/trainer/account';
+
+  // ── Notification preferences ──────────────────────────────────────────────
+  static const notificationPreferences = '/api/notifications/preferences';
+
+  // ── FAQs ──────────────────────────────────────────────────────────────────
+  static const faqs = '/api/faqs';
+
   static const trainerBaseLocation = '/api/location/trainer/base';
   static const trainerLiveLocation = '/api/location/trainer/live';
   static const trainerOnlineStatus = '/api/location/trainer/status';

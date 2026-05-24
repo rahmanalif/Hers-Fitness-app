@@ -2,6 +2,8 @@ import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/core/network/api_endpoints.dart';
 import 'package:fitness/models/trainer_availability_model.dart';
 import 'package:fitness/models/trainer_class_model.dart';
+import 'package:fitness/models/trainer_earnings_model.dart';
+import 'package:fitness/models/trainer_top_class_model.dart';
 
 class TrainerClassService {
   TrainerClassService({ApiClient? apiClient})
@@ -9,8 +11,13 @@ class TrainerClassService {
 
   final ApiClient _apiClient;
 
-  Future<List<TrainerClassModel>> getClasses() async {
-    final response = await _apiClient.get(ApiEndpoints.trainerClasses);
+  Future<List<TrainerClassModel>> getClasses({
+    bool includeCompleted = false,
+  }) async {
+    final response = await _apiClient.get(
+      ApiEndpoints.trainerClasses,
+      queryParameters: includeCompleted ? {'includeCompleted': 'true'} : null,
+    );
     return _extractList(response)
         .whereType<Map<String, dynamic>>()
         .map(TrainerClassModel.fromJson)
@@ -124,6 +131,43 @@ class TrainerClassService {
 
   Future<void> deleteClass(String id) async {
     await _apiClient.delete(ApiEndpoints.trainerClassById(id));
+  }
+
+  /// GET /api/trainer/dashboard/earnings
+  /// [period] = 'monthly' | 'weekly' | 'yearly'
+  /// [year]   required for monthly (defaults to current year on server)
+  /// [date]   ISO date string required for weekly (e.g. '2026-05-24')
+  Future<TrainerEarningsModel> getEarnings({
+    required String period,
+    int? year,
+    String? date,
+  }) async {
+    final params = <String, dynamic>{'period': period};
+    if (year != null) params['year'] = year;
+    if (date != null) params['date'] = date;
+
+    final response = await _apiClient.get(
+      ApiEndpoints.trainerDashboardEarnings,
+      queryParameters: params,
+    );
+    if (response is! Map<String, dynamic>) {
+      throw const ApiException('Invalid server response');
+    }
+    return TrainerEarningsModel.fromJson(response);
+  }
+
+  /// GET /api/trainer/dashboard/top-classes
+  Future<List<TrainerTopClassModel>> getTopClasses() async {
+    final response = await _apiClient.get(
+      ApiEndpoints.trainerDashboardTopClasses,
+    );
+    final list = response is Map<String, dynamic>
+        ? (response['data'] as List? ?? [])
+        : (response is List ? response : []);
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(TrainerTopClassModel.fromJson)
+        .toList();
   }
 
   List<dynamic> _extractList(dynamic response) {

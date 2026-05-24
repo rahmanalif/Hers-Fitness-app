@@ -215,6 +215,82 @@ class MemberYearlyActivityItem {
   }
 }
 
+// ── Daily Activity (Monthly tab) ─────────────────────────────────────────────
+
+class MemberDailyActivityModel {
+  final int month;
+  final int year;
+  final int totalCompletedSessions;
+  final List<MemberDailyActivityItem> days;
+
+  const MemberDailyActivityModel({
+    required this.month,
+    required this.year,
+    required this.totalCompletedSessions,
+    required this.days,
+  });
+
+  factory MemberDailyActivityModel.fromJson(Map<String, dynamic> json) {
+    final data = _object(json['data']) ?? json;
+    return MemberDailyActivityModel(
+      month: _readInt(data, const ['month']) ?? DateTime.now().month,
+      year: _readInt(data, const ['year']) ?? DateTime.now().year,
+      totalCompletedSessions:
+          _readInt(data, const ['totalCompletedSessions']) ?? 0,
+      days: _readList(data, const ['days'])
+          .map((item) =>
+              MemberDailyActivityItem.fromJson(_object(item) ?? {}))
+          .toList(),
+    );
+  }
+
+  static MemberDailyActivityModel empty(int month, int year) {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    return MemberDailyActivityModel(
+      month: month,
+      year: year,
+      totalCompletedSessions: 0,
+      days: List.generate(
+        daysInMonth,
+        (index) => MemberDailyActivityItem(
+          date:
+              '${year.toString().padLeft(4, '0')}-'
+              '${month.toString().padLeft(2, '0')}-'
+              '${(index + 1).toString().padLeft(2, '0')}',
+          day: index + 1,
+          completedSessions: 0,
+          activityPercentage: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class MemberDailyActivityItem {
+  final String date;
+  final int day;
+  final int completedSessions;
+  final int activityPercentage;
+
+  const MemberDailyActivityItem({
+    required this.date,
+    required this.day,
+    required this.completedSessions,
+    required this.activityPercentage,
+  });
+
+  factory MemberDailyActivityItem.fromJson(Map<String, dynamic> json) {
+    return MemberDailyActivityItem(
+      date: _readString(json, const ['date']) ?? '',
+      day: _readInt(json, const ['day']) ?? 1,
+      completedSessions: _readInt(json, const ['completedSessions']) ?? 0,
+      activityPercentage: _readInt(json, const ['activityPercentage']) ?? 0,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 Map<String, dynamic>? _object(dynamic value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {

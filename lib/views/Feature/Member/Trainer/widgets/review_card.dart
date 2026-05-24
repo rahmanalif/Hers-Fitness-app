@@ -22,11 +22,18 @@ class ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(14.r),
+      padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F3F4),
-        border: Border.all(color: Color(0xFFF2F2F2)),
-        borderRadius: BorderRadius.circular(32.r),
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFF2F2F2)),
+        borderRadius: BorderRadius.circular(24.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,7 +58,7 @@ class ReviewCard extends StatelessWidget {
                     SizedBox(height: 2.h),
                     Row(
                       children: [
-                        Icon(Icons.star, color: Colors.orange, size: 16.sp),
+                        Icon(Icons.star, color: const Color(0xFFFFC107), size: 16.sp),
                         SizedBox(width: 4.w),
                         Text(
                           rating,
@@ -64,7 +71,7 @@ class ReviewCard extends StatelessWidget {
                           width: 4.w,
                           height: 4.w,
                           decoration: const BoxDecoration(
-                            color: Colors.grey,
+                            color: Color(0xFFD9D9D9),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -80,6 +87,16 @@ class ReviewCard extends StatelessWidget {
                   ],
                 ),
               ),
+              IconButton(
+                onPressed: () {},
+                icon: Icon(
+                  Icons.more_vert,
+                  color: const Color(0xFFBDBDBD),
+                  size: 20.sp,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
             ],
           ),
           SizedBox(height: 12.h),
@@ -87,6 +104,7 @@ class ReviewCard extends StatelessWidget {
             reviewText,
             style: AppTextStyles.sm14Regular.copyWith(
               color: AppColors.textSecondary,
+              height: 1.5,
             ),
             maxLines: 5,
             overflow: TextOverflow.ellipsis,

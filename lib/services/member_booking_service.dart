@@ -64,6 +64,10 @@ class MemberBookingService {
     await _apiClient.patch(ApiEndpoints.memberBookingComplete(bookingId));
   }
 
+  Future<void> checkIn(String bookingId) async {
+    await _apiClient.patch(ApiEndpoints.memberBookingCheckIn(bookingId));
+  }
+
   List<dynamic> _extractList(dynamic response) {
     if (response is List) return response;
     if (response is! Map<String, dynamic>) {

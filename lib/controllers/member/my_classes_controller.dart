@@ -5,6 +5,7 @@ import 'package:fitness/services/member_booking_service.dart';
 import 'package:fitness/services/review_service.dart';
 import 'package:fitness/services/user_service.dart';
 import 'package:fitness/utils/app_snackbar.dart';
+import 'package:fitness/utils/booking_action_visibility.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -78,6 +79,18 @@ class MyClassesController extends GetxController {
 
   Map<String, dynamic> _getMyClassActions(MemberBookingModel booking) {
     final now = DateTime.now();
+    final source = <String, dynamic>{
+      'bookingStatus': booking.bookingStatus,
+      'paymentStatus': booking.paymentStatus,
+      'scheduledDate': booking.scheduledDate,
+      'startTime': booking.startTime,
+      'endTime': booking.endTime,
+      'startAt': booking.startAt,
+      'endAt': booking.endAt,
+      'memberCompletedAt': booking.memberCompletedAt,
+      'trainerCompletedAt': booking.trainerCompletedAt,
+      'completedAt': booking.completedAt,
+    };
 
     DateTime? startAt;
     if (booking.startAt != null) {
@@ -117,6 +130,9 @@ class MyClassesController extends GetxController {
           isClassActive &&
           sessionUpcoming &&
           (isConfirmed || isRescheduled),
+
+      'showCheckIn': canShowCheckIn(source, 'MEMBER'),
+      'showCheckInEnabled': canEnableCheckIn(source, 'MEMBER'),
 
       'showMarkAsComplete':
           isPaid &&
@@ -255,6 +271,32 @@ class MyClassesController extends GetxController {
       _showErrorDialog('Accept failed', _friendlyErrorMessage(error));
     } catch (_) {
       _showErrorDialog('Accept failed', 'Could not accept the new time.');
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<void> checkIn(String bookingId) async {
+    if (isSubmitting.value) return;
+
+    if (bookingId.trim().isEmpty) {
+      _showErrorDialog('Booking missing', 'Could not find this booking.');
+      return;
+    }
+
+    try {
+      isSubmitting.value = true;
+      await _bookingService.checkIn(bookingId);
+      await fetchData();
+      showAppSnackbar(
+        'Checked in!',
+        'You have successfully checked in to your class.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } on ApiException catch (error) {
+      _showErrorDialog('Check-in failed', _friendlyErrorMessage(error));
+    } catch (_) {
+      _showErrorDialog('Check-in failed', 'Could not check in. Please try again.');
     } finally {
       isSubmitting.value = false;
     }

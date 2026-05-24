@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/core/network/api_endpoints.dart';
 import 'package:fitness/models/chat_models.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ChatService {
@@ -35,11 +36,21 @@ class ChatService {
     final response = await _apiClient.get(
       ApiEndpoints.chatConversationMessages(conversationId),
     );
-    return readListPayload(response, const [
+    final messages = readListPayload(response, const [
       'messages',
+      'chatMessages',
+      'conversationMessages',
       'items',
       'results',
+      'rows',
+      'list',
+      'messageList',
+      'chat',
     ]).map(ChatMessageModel.fromJson).toList();
+    debugPrint(
+      'ChatService.getMessages($conversationId) parsed ${messages.length} messages',
+    );
+    return messages;
   }
 
   Future<ChatMessageModel> sendMessage({

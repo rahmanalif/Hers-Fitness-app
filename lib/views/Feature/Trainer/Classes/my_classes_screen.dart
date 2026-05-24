@@ -82,12 +82,14 @@ class MyClassesScreen extends StatelessWidget {
                   _buildSectionSwitcher(),
                   Expanded(
                     child: Obx(() {
-                      if (controller.selectedSection.value ==
-                          MyClassesSection.availability) {
-                        return _buildAvailabilityView();
+                      switch (controller.selectedSection.value) {
+                        case MyClassesSection.availability:
+                          return _buildAvailabilityView();
+                        case MyClassesSection.history:
+                          return _buildHistoryList();
+                        case MyClassesSection.classes:
+                          return _buildClassesList(context);
                       }
-
-                      return _buildClassesList(context);
                     }),
                   ),
                 ],
@@ -213,7 +215,100 @@ class MyClassesScreen extends StatelessWidget {
               isSelected: selectedSection == MyClassesSection.availability,
               onTap: () => controller.setSection(MyClassesSection.availability),
             ),
+            SizedBox(width: 4.w),
+            _SwitcherOption(
+              label: 'History',
+              isSelected: selectedSection == MyClassesSection.history,
+              onTap: () => controller.setSection(MyClassesSection.history),
+            ),
           ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildHistoryList() {
+    return Obx(() {
+      if (controller.isHistoryLoading.value &&
+          controller.completedClasses.isEmpty) {
+        return Center(
+          child: CircularProgressIndicator(color: AppColors.actionPrimary),
+        );
+      }
+
+      return RefreshIndicator(
+        color: AppColors.actionPrimary,
+        onRefresh: () => controller.fetchClassHistory(showError: true),
+        child: ListView.builder(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
+          itemCount: controller.completedClasses.isEmpty
+              ? 2
+              : controller.completedClasses.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: 16.h),
+                child: AppText(
+                  "Past Classes",
+                  style: AppTextStyles.base16SemiBold.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              );
+            }
+            if (controller.completedClasses.isEmpty) {
+              return Padding(
+                padding: EdgeInsets.only(top: 80.h),
+                child: Center(
+                  child: AppText(
+                    "No completed classes yet",
+                    style: AppTextStyles.sm14Medium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }
+            final cls = controller.completedClasses[index - 1];
+            return Padding(
+              padding: EdgeInsets.only(bottom: 16.h),
+              child: Stack(
+                children: [
+                  ClassCard(
+                    className: cls["title"],
+                    time: cls["time"],
+                    durationMin: cls["duration"],
+                    pricePerMember: cls["price"],
+                    maxMembers: cls["maxMembers"],
+                    classType: cls["classType"],
+                    sessionFormat: cls["sessionFormat"],
+                    // History cards are read-only — no edit/delete
+                    onTap: () => _openClassDetails(cls),
+                  ),
+                  // COMPLETED badge overlay
+                  Positioned(
+                    top: 12.h,
+                    right: 12.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 10.w, vertical: 4.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: AppText(
+                        "Completed",
+                        style: AppTextStyles.xs12Regular.copyWith(
+                          color: const Color(0xFF6B7280),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       );
     });

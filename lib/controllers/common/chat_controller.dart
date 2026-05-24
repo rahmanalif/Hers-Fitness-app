@@ -124,14 +124,17 @@ class ChatContact {
     ChatConversationModel model, {
     required String? currentUserId,
   }) {
-    final isTrainer = currentUserId != null &&
+    final isTrainer =
+        currentUserId != null &&
         currentUserId.isNotEmpty &&
         currentUserId == model.trainerUserId;
     final participant = isTrainer ? model.member : model.trainer;
-    final participantUserId =
-        isTrainer ? model.memberUserId : model.trainerUserId;
-    final participantStatus =
-        isTrainer ? model.memberStatus : model.trainerStatus;
+    final participantUserId = isTrainer
+        ? model.memberUserId
+        : model.trainerUserId;
+    final participantStatus = isTrainer
+        ? model.memberStatus
+        : model.trainerStatus;
 
     return ChatContact(
       id: model.id,
@@ -205,11 +208,28 @@ class ChatController extends GetxController {
   final searchController = TextEditingController();
 
   final List<StreamSubscription<Map<String, dynamic>>> _subscriptions = [];
-  final Map<String, Timer> _pendingFallbackTimers = {};
   Timer? _participantTypingTimer;
   Timer? _typingStopTimer;
   String? _currentUserId;
   String? _joinedConversationId;
+  final Map<String, List<ChatMessage>> _messageCache = {};
+  // Tracks the conversation ID represented by the current message list.
+  // Used by fetchMessages to decide whether to clear the list before fetching:
+  // clearing is only necessary when switching to a different conversation. For
+  // the same conversation (e.g. a silent refresh after navigating
+  // back-and-forward, or a reconnect), we keep the existing messages visible so
+  // the user never sees "No messages yet." as a flash.
+  String? _loadedConversationId;
+
+  // Prevents concurrent openConversation calls from wiping already-loaded
+  // messages.  The most common trigger is a double-tap on the conversation
+  // list: without this guard both ChatScreen instances call openConversation
+  // through their addPostFrameCallback, causing a second messages.clear() to
+  // run immediately after the first fetch completes and the loaded messages
+  // are briefly visible — producing the "flash of history → No messages yet."
+  // symptom.
+  bool _isOpeningConversation = false;
+  int _messagesFetchSerial = 0;
 
   List<ChatContact> get filteredContacts {
     final query = searchQuery.value.trim().toLowerCase();
@@ -229,8 +249,7 @@ class ChatController extends GetxController {
     return visible;
   }
 
-  bool get canSend =>
-      composerText.value.trim().isNotEmpty && !isSending.value;
+  bool get canSend => composerText.value.trim().isNotEmpty && !isSending.value;
 
   bool get canPickImage => !isSendingImage.value;
 
@@ -273,11 +292,37 @@ class ChatController extends GetxController {
   }
 
   Future<void> openConversation(ChatContact contact) async {
-    selectedContact.value = contact;
-    await _connectSocket();
-    _joinConversation(contact.id);
-    await fetchMessages(contact.id, showError: true);
-    markSeen(contact.id);
+    // Guard: skip if another openConversation is already in-flight.
+    // This is the primary defence against the "messages load then disappear"
+    // bug: a double-tap pushes two ChatScreen instances that share this
+    // singleton controller and both call openConversation.  The second call
+    // arriving while the first fetch is in progress would clear the freshly-
+    // loaded messages list and restart the fetch — if that second fetch
+    // returned empty (or the UI rendered between the clear and the re-fill)
+    // the user saw "No messages yet." instead of the conversation history.
+    if (_isOpeningConversation) return;
+    _isOpeningConversation = true;
+
+    // Set the loading flag immediately (synchronously, before any awaits) so
+    // that the very first frame of ChatScreen shows a spinner rather than the
+    // "No messages yet." empty-state.  Without this the UI renders one frame
+    // with isLoadingMessages=false and messages=[] — which matches the empty-
+    // state condition — causing a brief but jarring flash before the real fetch
+    // starts.
+    if (messages.isEmpty) {
+      isLoadingMessages.value = true;
+    }
+
+    try {
+      selectedContact.value = contact;
+      await _connectSocket();
+      _joinConversation(contact.id);
+      // fetchMessages already calls markSeen internally once messages are loaded.
+      // Do NOT call markSeen here again — it fires a redundant PATCH /seen request.
+      await fetchMessages(contact.id, showError: true);
+    } finally {
+      _isOpeningConversation = false;
+    }
   }
 
   void closeActiveConversation() {
@@ -322,14 +367,12 @@ class ChatController extends GetxController {
       }
 
       _upsertContact(contact);
-      await openConversation(contact);
-      return selectedContact.value ?? contact;
+      return contact;
     } on ApiException catch (error) {
       final existing = await _findExistingConversationForTrainer(
         trainerUserId.trim(),
       );
       if (existing != null) {
-        await openConversation(existing);
         return existing;
       }
       _showError('Chat failed', _friendlyChatStartError(error));
@@ -349,10 +392,8 @@ class ChatController extends GetxController {
       final response = await _chatService.getConversations();
       ChatContact? contact;
       for (final item in response.map(
-        (conversation) => ChatContact.fromModel(
-          conversation,
-          currentUserId: _currentUserId,
-        ),
+        (conversation) =>
+            ChatContact.fromModel(conversation, currentUserId: _currentUserId),
       )) {
         if (item.trainerUserId == trainerUserId) {
           contact = item;
@@ -370,37 +411,77 @@ class ChatController extends GetxController {
     String conversationId, {
     bool showError = false,
   }) async {
-    if (conversationId.trim().isEmpty) return;
+    final normalizedConversationId = conversationId.trim();
+    if (normalizedConversationId.isEmpty) return;
+
+    final fetchSerial = ++_messagesFetchSerial;
 
     try {
       isLoadingMessages.value = true;
       messagesError.value = '';
+
+      // Only wipe the message list when switching to a DIFFERENT conversation.
+      // When re-fetching the same conversation (back-and-forward navigation,
+      // reconnect, retry, or any sequential openConversation call), keeping
+      // the existing messages visible prevents the "No messages yet." flash
+      // that was caused by messages.clear() running while the new API call
+      // was still in flight.
+      // When switching conversations we still clear immediately so the user
+      // never sees the previous conversation's history during the load.
+      if (_loadedConversationId != normalizedConversationId) {
+        final cachedMessages = _messageCache[normalizedConversationId];
+        if (cachedMessages != null && cachedMessages.isNotEmpty) {
+          messages.assignAll(cachedMessages);
+        } else {
+          messages.clear();
+        }
+      }
+      _loadedConversationId = normalizedConversationId;
+
       await _loadCurrentUserId();
 
-      final response = await _chatService.getMessages(conversationId);
+      final response = await _chatService.getMessages(normalizedConversationId);
+      if (fetchSerial != _messagesFetchSerial) return;
+
       response.sort((a, b) {
         final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
         return aDate.compareTo(bDate);
       });
 
-      messages.assignAll(
-        _dedupeMessages(
-          response.map(
-            (message) =>
-                ChatMessage.fromModel(message, currentUserId: _currentUserId),
-          ),
+      final nextMessages = _dedupeMessages(
+        response.map(
+          (message) =>
+              ChatMessage.fromModel(message, currentUserId: _currentUserId),
         ),
       );
-      markSeen(conversationId);
+
+      // If a duplicate/silent refresh for the same conversation parses as
+      // empty, keep the history that is already on screen. This prevents a
+      // late empty response from replacing visible chat history with the empty
+      // state while still allowing genuinely empty newly opened chats.
+      if (nextMessages.isEmpty && messages.isNotEmpty) {
+        markSeen(normalizedConversationId);
+        return;
+      }
+
+      messages.assignAll(nextMessages);
+      _messageCache[normalizedConversationId] = List<ChatMessage>.unmodifiable(
+        nextMessages,
+      );
+      markSeen(normalizedConversationId);
     } on ApiException catch (error) {
+      if (fetchSerial != _messagesFetchSerial) return;
       messagesError.value = error.message;
       if (showError) _showError('Messages failed', error.message);
     } catch (_) {
+      if (fetchSerial != _messagesFetchSerial) return;
       messagesError.value = 'Could not load messages.';
       if (showError) _showError('Messages failed', messagesError.value);
     } finally {
-      isLoadingMessages.value = false;
+      if (fetchSerial == _messagesFetchSerial) {
+        isLoadingMessages.value = false;
+      }
     }
   }
 
@@ -429,19 +510,25 @@ class ChatController extends GetxController {
     _upsertContact(contact.copyWith(lastMessage: text, updatedAt: now));
     _sendTyping(false);
 
-    final sentOverSocket = await _sendMessageOverSocket(
+    // Emit via socket for real-time delivery to the other participant.
+    // This is fire-and-forget: REST is the single source of truth for
+    // DB persistence and sender confirmation. Sending via socket only
+    // delivers the event to others immediately; the server does NOT echo
+    // back to the sender, so a fallback timer would always fire and create
+    // a second DB record — which was the root cause of duplicate messages.
+    unawaited(
+      _connectSocket().then((_) {
+        _socketService.sendText(conversationId: contact.id, text: text);
+      }),
+    );
+
+    // Always confirm via REST to get the server-assigned ID and ensure
+    // exactly one DB record is created.
+    await _sendMessageOverRest(
       conversationId: contact.id,
       text: text,
       pendingId: pendingId,
     );
-
-    if (!sentOverSocket) {
-      await _sendMessageOverRest(
-        conversationId: contact.id,
-        text: text,
-        pendingId: pendingId,
-      );
-    }
   }
 
   Future<void> pickAndSendImage(ImageSource source) async {
@@ -456,10 +543,7 @@ class ChatController extends GetxController {
       if (picked == null) return;
 
       isSendingImage.value = true;
-      await _sendImageFile(
-        conversationId: contact.id,
-        file: File(picked.path),
-      );
+      await _sendImageFile(conversationId: contact.id, file: File(picked.path));
     } on ApiException catch (error) {
       _showError('Image failed', error.message);
     } catch (_) {
@@ -521,47 +605,6 @@ class ChatController extends GetxController {
     unawaited(_markSeenRest(conversationId));
   }
 
-  Future<bool> _sendMessageOverSocket({
-    required String conversationId,
-    required String text,
-    required String pendingId,
-  }) async {
-    await _connectSocket();
-    final emitted = _socketService.sendText(
-      conversationId: conversationId,
-      text: text,
-    );
-
-    if (!emitted) return false;
-
-    _pendingFallbackTimers[pendingId]?.cancel();
-    _pendingFallbackTimers[pendingId] = Timer(const Duration(seconds: 6), () {
-      final stillPending = messages.any(
-        (message) => message.id == pendingId && message.isPending,
-      );
-      if (stillPending) {
-        final pendingIndex = messages.indexWhere(
-          (message) => message.id == pendingId && message.isPending,
-        );
-        if (pendingIndex != -1 &&
-            _findDuplicateMessageIndex(messages[pendingIndex]) != -1) {
-          messages.removeAt(pendingIndex);
-          return;
-        }
-
-        unawaited(
-          _sendMessageOverRest(
-            conversationId: conversationId,
-            text: text,
-            pendingId: pendingId,
-          ),
-        );
-      }
-    });
-
-    return true;
-  }
-
   Future<void> _sendMessageOverRest({
     required String conversationId,
     required String text,
@@ -573,7 +616,6 @@ class ChatController extends GetxController {
         conversationId: conversationId,
         text: text,
       );
-      _pendingFallbackTimers.remove(pendingId)?.cancel();
       _replacePendingMessage(
         pendingId,
         ChatMessage.fromModel(response, currentUserId: _currentUserId),
@@ -604,6 +646,17 @@ class ChatController extends GetxController {
   }
 
   Future<void> _connectSocket() async {
+    // Register the reconnect handler once so that if the socket drops and
+    // reconnects automatically, we re-join the active conversation room.
+    // Without this, a mid-session network blip would silently remove the
+    // client from the room and stop real-time messages from arriving.
+    _socketService.onReconnected ??= () {
+      final conversationId = _joinedConversationId;
+      if (conversationId != null && conversationId.isNotEmpty) {
+        debugPrint('Socket reconnected — re-joining room $conversationId');
+        _socketService.join(conversationId);
+      }
+    };
     await _socketService.connect();
     isSocketConnected.value = _socketService.isConnected;
   }
@@ -629,10 +682,7 @@ class ChatController extends GetxController {
     final model = ChatMessageModel.fromJson(readMapPayload(payload));
     if (model.id.isEmpty) return;
 
-    final message = ChatMessage.fromModel(
-      model,
-      currentUserId: _currentUserId,
-    );
+    final message = ChatMessage.fromModel(model, currentUserId: _currentUserId);
     _addOrReplaceMessage(message);
 
     final contact = selectedContact.value;
@@ -672,7 +722,8 @@ class ChatController extends GetxController {
       return;
     }
 
-    final seenAt = DateTime.tryParse(payload['seenAt']?.toString() ?? '') ??
+    final seenAt =
+        DateTime.tryParse(payload['seenAt']?.toString() ?? '') ??
         DateTime.now();
     messages.assignAll(
       messages.map((message) {
@@ -743,9 +794,12 @@ class ChatController extends GetxController {
 
   void _addOrReplaceMessage(ChatMessage message) {
     if (message.id.isNotEmpty && !message.id.startsWith('local-')) {
-      final existingIndex = messages.indexWhere((item) => item.id == message.id);
+      final existingIndex = messages.indexWhere(
+        (item) => item.id == message.id,
+      );
       if (existingIndex != -1) {
         messages[existingIndex] = message;
+        _cacheCurrentMessages();
         return;
       }
 
@@ -756,8 +810,8 @@ class ChatController extends GetxController {
             item.conversationId == message.conversationId;
       });
       if (pendingIndex != -1) {
-        _pendingFallbackTimers.remove(messages[pendingIndex].id)?.cancel();
         messages[pendingIndex] = message;
+        _cacheCurrentMessages();
         return;
       }
 
@@ -767,12 +821,14 @@ class ChatController extends GetxController {
           messages[duplicateIndex],
           message,
         );
+        _cacheCurrentMessages();
         return;
       }
     }
 
     messages.add(message);
     _sortMessages();
+    _cacheCurrentMessages();
   }
 
   List<ChatMessage> _dedupeMessages(Iterable<ChatMessage> source) {
@@ -834,7 +890,10 @@ class ChatController extends GetxController {
     return aDate.difference(bDate).abs() <= const Duration(seconds: 12);
   }
 
-  ChatMessage _mergeDuplicateMessage(ChatMessage current, ChatMessage incoming) {
+  ChatMessage _mergeDuplicateMessage(
+    ChatMessage current,
+    ChatMessage incoming,
+  ) {
     if (current.isPending && !incoming.isPending) return incoming;
     if (current.isFailed && !incoming.isFailed) return incoming;
     if (current.id.startsWith('local-') && !incoming.id.startsWith('local-')) {
@@ -850,6 +909,7 @@ class ChatController extends GetxController {
     messages.sort((a, b) {
       return _compareMessages(a, b);
     });
+    _cacheCurrentMessages();
   }
 
   int _compareMessages(ChatMessage a, ChatMessage b) {
@@ -865,6 +925,7 @@ class ChatController extends GetxController {
       return;
     }
     messages[index] = replacement.copyWith(isPending: false);
+    _cacheCurrentMessages();
   }
 
   void _markPendingFailed(String pendingId) {
@@ -874,6 +935,15 @@ class ChatController extends GetxController {
       isPending: false,
       isFailed: true,
     );
+    _cacheCurrentMessages();
+  }
+
+  void _cacheCurrentMessages() {
+    final conversationId = _loadedConversationId ?? selectedContact.value?.id;
+    if (conversationId == null || conversationId.isEmpty || messages.isEmpty) {
+      return;
+    }
+    _messageCache[conversationId] = List<ChatMessage>.unmodifiable(messages);
   }
 
   void _upsertContact(ChatContact contact) {
@@ -904,11 +974,7 @@ class ChatController extends GetxController {
   }
 
   void _showError(String title, String message) {
-    showAppSnackbar(
-      title,
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    showAppSnackbar(title, message, snackPosition: SnackPosition.BOTTOM);
   }
 
   String _friendlyChatStartError(ApiException error) {
@@ -924,9 +990,6 @@ class ChatController extends GetxController {
   @override
   void onClose() {
     closeActiveConversation();
-    for (final timer in _pendingFallbackTimers.values) {
-      timer.cancel();
-    }
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }

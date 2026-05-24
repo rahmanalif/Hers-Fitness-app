@@ -1,12 +1,15 @@
 import 'dart:io';
 
 import 'package:fitness/controllers/trainer/trainer_profile_controller.dart';
+import 'package:fitness/models/trainer_earnings_model.dart';
+import 'package:fitness/models/trainer_top_class_model.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:fitness/views/Base/AppText/appText.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../Helpers/route.dart';
 
@@ -19,220 +22,207 @@ class TrainerProfileScreen extends StatefulWidget {
 
 class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   int selectedYear = DateTime.now().year;
-  int selectedMonth = DateTime.now().month;
-  String selectedPeriod = "Yearly";
+  String selectedPeriod = "Monthly"; // default matches API default
+
+  late final TrainerProfileController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = Get.isRegistered<TrainerProfileController>()
+        ? Get.find<TrainerProfileController>()
+        : Get.put(TrainerProfileController());
+  }
+
+  // ── Period tab change ─────────────────────────────────────────────────────
+
+  void _onPeriodChanged(String period) {
+    setState(() => selectedPeriod = period);
+    switch (period) {
+      case 'Weekly':
+        final today = DateTime.now();
+        final dateStr =
+            '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+        _ctrl.fetchEarnings(period: 'weekly', date: dateStr);
+        break;
+      case 'Yearly':
+        _ctrl.fetchEarnings(period: 'yearly');
+        break;
+      case 'Monthly':
+      default:
+        _ctrl.fetchEarnings(period: 'monthly', year: selectedYear);
+        break;
+    }
+  }
+
+  void _onYearChanged(int year) {
+    setState(() => selectedYear = year);
+    if (selectedPeriod == 'Monthly') {
+      _ctrl.fetchEarnings(period: 'monthly', year: year);
+    }
+  }
+
+  // ── Year picker dialog ────────────────────────────────────────────────────
 
   void _showYearPicker(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Select Year"),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: YearPicker(
-              firstDate: DateTime(DateTime.now().year - 10),
-              lastDate: DateTime(DateTime.now().year + 10),
-              initialDate: DateTime.now(),
-              selectedDate: DateTime(selectedYear),
-              onChanged: (DateTime dateTime) {
-                setState(() {
-                  selectedYear = dateTime.year;
-                });
-                Navigator.pop(context);
-              },
-            ),
+      builder: (_) => AlertDialog(
+        title: const Text("Select Year"),
+        content: SizedBox(
+          width: 300,
+          height: 300,
+          child: YearPicker(
+            firstDate: DateTime(DateTime.now().year - 10),
+            lastDate: DateTime(DateTime.now().year + 10),
+            selectedDate: DateTime(selectedYear),
+            onChanged: (DateTime dt) {
+              Navigator.pop(context);
+              _onYearChanged(dt.year);
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  void _showMonthPicker(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Select Month"),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: ListView.builder(
-              itemCount: 12,
-              itemBuilder: (context, index) {
-                final monthName = [
-                  "January", "February", "March", "April", "May", "June",
-                  "July", "August", "September", "October", "November", "December"
-                ][index];
-                return ListTile(
-                  title: Text(monthName),
-                  selected: selectedMonth == index + 1,
-                  onTap: () {
-                    setState(() {
-                      selectedMonth = index + 1;
-                    });
-                    Navigator.pop(context);
-                  },
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final TrainerProfileController profileController =
-        Get.isRegistered<TrainerProfileController>()
-        ? Get.find<TrainerProfileController>()
-        : Get.put(TrainerProfileController());
-
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: Obx(() => SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(context, profileController.profileImageUrl),
-            if (profileController.isLoading.value)
-              LinearProgressIndicator(color: AppColors.actionPrimary),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Column(
-                children: [
-                  SizedBox(height: 12.h),
-                  AppText(
-                    profileController.displayName,
-                    style: AppTextStyles.xl20SemiBold.copyWith(color: AppColors.textPrimary),
-                  ),
-                  SizedBox(height: 8.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
-                      SizedBox(width: 4.w),
-                      AppText(
-                        profileController.displayLocation,
-                        style: AppTextStyles.sm14Medium.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 24.h),
-
-                  // ── Stats Grid ─────────────────────────────────────────
-                  GridView.count(
-                    crossAxisCount: 2,
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 16.h,
-                    crossAxisSpacing: 16.w,
-                    childAspectRatio: 1.4,
-                    children: const [
-                      _ProfileStatCard(
-                        title: "Total Classes",
-                        value: "20",
-                        icon: Icons.calendar_month_rounded,
-                        iconColor: Color(0xFFF7869A),
-                      ),
-                      _ProfileStatCard(
-                        title: "Total Revenue",
-                        value: "18",
-                        icon: Icons.monetization_on_rounded,
-                        iconColor: Color(0xFF16A34A),
-                      ),
-                      _ProfileStatCard(
-                        title: "Total Attendance",
-                        value: "18",
-                        icon: Icons.people_alt_rounded,
-                        iconColor: Color(0xFF0284C7),
-                      ),
-                      _ProfileStatCard(
-                        title: "Avg Class Size",
-                        value: "18",
-                        icon: Icons.trending_up_rounded,
-                        iconColor: Color(0xFFF7869A),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 24.h),
-
-                  // ── Earnings Overview ──────────────────────────────────
-                  _buildEarningsOverview(context),
-                  SizedBox(height: 32.h),
-
-                  // ── Top Performing Classes ─────────────────────────────
-                  Row(
-                    children: [
-                      AppText(
-                        "Top Performing Classes",
-                        style: AppTextStyles.base16SemiBold.copyWith(color: AppColors.textPrimary),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16.h),
-                  _buildClassItem("Back Workout"),
-                  _buildClassItem("Leg Day"),
-                  _buildClassItem("Yoga and Stretching"),
-                  
-                  SizedBox(height: 32.h)
-                ],
+      body: Obx(
+        () => RefreshIndicator(
+          color: AppColors.actionPrimary,
+          onRefresh: () async {
+            await Future.wait([
+              _ctrl.fetchProfile(showError: true),
+              _ctrl.fetchDashboardStats(showError: true),
+              _ctrl.fetchEarnings(
+                period: selectedPeriod.toLowerCase(),
+                year: selectedPeriod == 'Monthly' ? selectedYear : null,
               ),
+              _ctrl.fetchTopClasses(showError: true),
+            ]);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                _buildHeader(context),
+                if (_ctrl.isLoading.value)
+                  LinearProgressIndicator(color: AppColors.actionPrimary),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: Column(
+                    children: [
+                      SizedBox(height: 12.h),
+                      // Name
+                      AppText(
+                        _ctrl.displayName,
+                        style: AppTextStyles.xl20SemiBold
+                            .copyWith(color: AppColors.textPrimary),
+                      ),
+                      SizedBox(height: 8.h),
+                      // Location
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.location_on_outlined,
+                              size: 18, color: AppColors.textSecondary),
+                          SizedBox(width: 4.w),
+                          AppText(
+                            _ctrl.displayLocation,
+                            style: AppTextStyles.sm14Medium.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 24.h),
+
+                      // ── Stats Grid ──────────────────────────────────────
+                      _buildStatsGrid(),
+                      SizedBox(height: 24.h),
+
+                      // ── Earnings Overview ───────────────────────────────
+                      _buildEarningsOverview(context),
+                      SizedBox(height: 32.h),
+
+                      // ── Top Performing Classes ──────────────────────────
+                      Row(
+                        children: [
+                          AppText(
+                            "Top Performing Classes",
+                            style: AppTextStyles.base16SemiBold
+                                .copyWith(color: AppColors.textPrimary),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16.h),
+                      _buildTopClasses(),
+                      SizedBox(height: 32.h),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      )),
+      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, String imageUrl) {
-    final TrainerProfileController profileController = Get.find<TrainerProfileController>();
+  // ── Header ────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader(BuildContext context) {
     return SizedBox(
       height: 235.h,
       child: Stack(
         children: [
-          // Background Image
+          // Cover photo
           Obx(
             () => Container(
               height: 190.h,
               width: double.infinity,
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(bottomRight: Radius.circular(30), bottomLeft: Radius.circular(30)),
+                borderRadius: const BorderRadius.only(
+                  bottomRight: Radius.circular(30),
+                  bottomLeft: Radius.circular(30),
+                ),
                 image: DecorationImage(
-                  image: profileController.coverPhotoUrl.value.isEmpty
-                      ? const NetworkImage("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop") as ImageProvider
-                      : FileImage(File(profileController.coverPhotoUrl.value)),
+                  image: _ctrl.coverPhotoUrl.value.isEmpty
+                      ? const NetworkImage(
+                              "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop")
+                          as ImageProvider
+                      : _ctrl.coverPhotoUrl.value.startsWith('http')
+                          ? NetworkImage(_ctrl.coverPhotoUrl.value)
+                          : FileImage(File(_ctrl.coverPhotoUrl.value)),
                   fit: BoxFit.cover,
                 ),
               ),
             ),
           ),
-          // Change Cover Photo Button
+          // Camera button
           Positioned(
-            top: MediaQuery.of(context).padding.top + 50.h,
-            right: 20.w,
+            top: 140.h,
+            right: 30.w,
             child: GestureDetector(
-              onTap: () => profileController.pickCoverPhoto(),
+              onTap: _ctrl.pickCoverPhoto,
               child: Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.5),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.camera_alt_outlined,
-                  color: Colors.white,
-                  size: 20.w,
-                ),
+                child: Icon(Icons.camera_alt_outlined,
+                    color: Colors.white, size: 20.w),
               ),
             ),
           ),
-          // Top Buttons
+          // Back + Settings
           Positioned(
             top: MediaQuery.of(context).padding.top + 10.h,
             left: 20.w,
@@ -240,7 +230,9 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _HeaderCircleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Get.back()),
+                _HeaderCircleButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    onTap: () => Get.back()),
                 _HeaderCircleButton(
                   icon: Icons.settings_outlined,
                   onTap: () => Get.toNamed(AppRoutes.accountSettingsScreen),
@@ -248,36 +240,81 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
               ],
             ),
           ),
-          // Profile Image
+          // Profile image
           Align(
             alignment: Alignment.bottomCenter,
-            child: Container(
-              width: 90.w,
-              height: 90.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.rectangle,
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(color: Colors.white, width: 4),
-                image: imageUrl.isEmpty
-                    ? null
-                    : DecorationImage(
-                        image: NetworkImage(imageUrl),
-                        fit: BoxFit.cover,
-                      ),
-              ),
-              child: imageUrl.isEmpty
-                  ? Icon(
-                      Icons.person,
-                      color: AppColors.textSecondary,
-                      size: 40.w,
-                    )
-                  : null,
-            ),
+            child: Obx(() {
+              final imageUrl = _ctrl.profileImageUrl;
+              return Container(
+                width: 90.w,
+                height: 90.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: Colors.white, width: 4),
+                  image: imageUrl.isEmpty
+                      ? null
+                      : DecorationImage(
+                          image: NetworkImage(imageUrl),
+                          fit: BoxFit.cover,
+                        ),
+                ),
+                child: imageUrl.isEmpty
+                    ? Icon(Icons.person,
+                        color: AppColors.textSecondary, size: 40.w)
+                    : null,
+              );
+            }),
           ),
         ],
       ),
     );
   }
+
+  // ── Stats Grid ──────────────────────────────────────────────────��─────────
+
+  Widget _buildStatsGrid() {
+    return Obx(() {
+      final loading = _ctrl.isLoadingStats.value;
+      return GridView.count(
+        crossAxisCount: 2,
+        padding: EdgeInsets.zero,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 16.h,
+        crossAxisSpacing: 16.w,
+        childAspectRatio: 1.4,
+        children: [
+          _ProfileStatCard(
+            title: "Total Classes",
+            value: loading ? '…' : _ctrl.totalClasses,
+            icon: Icons.calendar_month_rounded,
+            iconColor: const Color(0xFFF7869A),
+          ),
+          _ProfileStatCard(
+            title: "Total Revenue",
+            value: loading ? '…' : _ctrl.totalRevenue,
+            icon: Icons.monetization_on_rounded,
+            iconColor: const Color(0xFF16A34A),
+          ),
+          _ProfileStatCard(
+            title: "Total Attendance",
+            value: loading ? '…' : _ctrl.totalAttendance,
+            icon: Icons.people_alt_rounded,
+            iconColor: const Color(0xFF0284C7),
+          ),
+          _ProfileStatCard(
+            title: "Avg Class Size",
+            value: loading ? '…' : _ctrl.avgClassSize,
+            icon: Icons.trending_up_rounded,
+            iconColor: const Color(0xFFF7869A),
+          ),
+        ],
+      );
+    });
+  }
+
+  // ── Earnings Overview ─────────────────────────────────────────────────────
 
   Widget _buildEarningsOverview(BuildContext context) {
     return Container(
@@ -290,83 +327,80 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title row + year picker (monthly only)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               AppText(
                 "Earnings Overview",
-                style: AppTextStyles.base16SemiBold.copyWith(color: AppColors.textPrimary),
+                style: AppTextStyles.base16SemiBold
+                    .copyWith(color: AppColors.textPrimary),
               ),
-              if (selectedPeriod == "Yearly")
+              if (selectedPeriod == "Monthly")
                 GestureDetector(
                   onTap: () => _showYearPicker(context),
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 12.w, vertical: 8.h),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.textSecondary),
+                        Icon(Icons.calendar_month_outlined,
+                            size: 16, color: AppColors.textSecondary),
                         SizedBox(width: 8.w),
                         AppText(
                           "$selectedYear",
-                          style: AppTextStyles.xs12Regular.copyWith(color: AppColors.textPrimary),
+                          style: AppTextStyles.xs12Regular
+                              .copyWith(color: AppColors.textPrimary),
                         ),
-                        Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textSecondary),
-                      ],
-                    ),
-                  ),
-                ),
-              if (selectedPeriod == "Monthly")
-                GestureDetector(
-                  onTap: () => _showMonthPicker(context),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.textSecondary),
-                        SizedBox(width: 8.w),
-                        AppText(
-                          [
-                            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-                          ][selectedMonth - 1],
-                          style: AppTextStyles.xs12Regular.copyWith(color: AppColors.textPrimary),
-                        ),
-                        Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textSecondary),
+                        Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 16, color: AppColors.textSecondary),
                       ],
                     ),
                   ),
                 ),
             ],
           ),
+          SizedBox(height: 8.h),
+          // Total earnings label
+          Obx(() {
+            final e = _ctrl.earnings.value;
+            if (e == null) return const SizedBox.shrink();
+            return AppText(
+              NumberFormat.currency(symbol: '\$', decimalDigits: 2)
+                  .format(e.totalEarnings),
+              style: AppTextStyles.xl20SemiBold.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 22.sp,
+              ),
+            );
+          }),
           SizedBox(height: 16.h),
+          // Period tabs
           Row(
             children: ["Weekly", "Monthly", "Yearly"].map((period) {
-              bool isSelected = selectedPeriod == period;
+              final isSelected = selectedPeriod == period;
               return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedPeriod = period;
-                  });
-                },
+                onTap: () => _onPeriodChanged(period),
                 child: Container(
                   margin: EdgeInsets.only(right: 8.w),
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 16.w, vertical: 8.h),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.actionPrimary : AppColors.bgTertiary,
+                    color: isSelected
+                        ? AppColors.actionPrimary
+                        : AppColors.bgTertiary,
                     borderRadius: BorderRadius.circular(20.r),
                   ),
                   child: AppText(
                     period,
                     style: AppTextStyles.xs12Medium.copyWith(
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                      color: isSelected
+                          ? Colors.white
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -374,54 +408,170 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
             }).toList(),
           ),
           SizedBox(height: 24.h),
-          
-          // ── High-Fidelity Activity Bar Chart ──────────────────────────
-          SizedBox(
-            height: 200.h,
-            child: Row(
-              children: [
-                // Y-Axis Labels
-                Padding(
-                  padding: EdgeInsets.only(bottom: 24.h), // Align with chart area
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: ["100", "90", "80", "70", "60"].map((label) {
-                      return AppText(
-                        label,
-                        style: AppTextStyles.xs12Regular.copyWith(color: const Color(0xFF828282)),
-                      );
-                    }).toList(),
+
+          // Chart
+          Obx(() {
+            if (_ctrl.isLoadingEarnings.value) {
+              return SizedBox(
+                height: 200.h,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.actionPrimary,
                   ),
                 ),
-                SizedBox(width: 12.w),
-                // Chart Area
+              );
+            }
+            final data = _ctrl.earnings.value;
+            if (data == null || data.data.isEmpty) {
+              return SizedBox(
+                height: 200.h,
+                child: Center(
+                  child: AppText(
+                    "No earnings data",
+                    style: AppTextStyles.sm14Regular
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              );
+            }
+            return _EarningsChart(earningsData: data);
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ── Top Classes ───────────────────────────────────────────────────────────
+
+  Widget _buildTopClasses() {
+    return Obx(() {
+      if (_ctrl.isLoadingTopClasses.value && _ctrl.topClasses.isEmpty) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 16.h),
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.actionPrimary),
+          ),
+        );
+      }
+      if (_ctrl.topClasses.isEmpty) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 16.h),
+          child: Center(
+            child: AppText(
+              "No class data yet",
+              style: AppTextStyles.sm14Regular
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+          ),
+        );
+      }
+      return Column(
+        children: _ctrl.topClasses
+            .map((cls) => _TopClassItem(cls: cls))
+            .toList(),
+      );
+    });
+  }
+}
+
+// ─── Earnings Chart ────────────────────────────────────────────────────────────
+
+class _EarningsChart extends StatelessWidget {
+  const _EarningsChart({required this.earningsData});
+  final TrainerEarningsModel earningsData;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = earningsData.data;
+    final maxVal = earningsData.maxEarnings;
+
+    // Y-axis: derive 5 evenly-spaced labels from 0 to maxVal
+    final yLabels = List.generate(5, (i) {
+      final v = maxVal * (4 - i) / 4;
+      return v >= 1000
+          ? '\$${(v / 1000).toStringAsFixed(0)}k'
+          : '\$${v.toStringAsFixed(0)}';
+    });
+
+    return SizedBox(
+      height: 200.h,
+      child: Row(
+        children: [
+          // Y-axis labels
+          Padding(
+            padding: EdgeInsets.only(bottom: 24.h),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: yLabels
+                  .map((l) => AppText(
+                        l,
+                        style: AppTextStyles.xs12Regular
+                            .copyWith(color: const Color(0xFF828282)),
+                      ))
+                  .toList(),
+            ),
+          ),
+          SizedBox(width: 8.w),
+          // Chart area
+          Expanded(
+            child: Column(
+              children: [
                 Expanded(
-                  child: Column(
+                  child: Stack(
                     children: [
-                      Expanded(
-                        child: Stack(
-                          children: [
-                            // Grid Lines (Horizontal)
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: List.generate(5, (index) => _DashedGridLine()),
-                            ),
-                            // Bars Area
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8.w),
-                              child: _buildBars(),
-                            ),
-                          ],
-                        ),
+                      // Grid lines
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children:
+                            List.generate(5, (_) => _DashedGridLine()),
                       ),
-                      // Labels Row
-                      SizedBox(height: 12.h),
+                      // Bars
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4.w),
-                        child: _buildLabels(),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: items.map((item) {
+                            final factor = maxVal > 0
+                                ? (item.earnings / maxVal).clamp(0.0, 1.0)
+                                : 0.0;
+                            final barW = items.length <= 7
+                                ? 20.0
+                                : items.length <= 14
+                                    ? 12.0
+                                    : 6.0;
+                            return _EarningsBar(
+                              heightFactor: factor,
+                              width: barW,
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ],
                   ),
+                ),
+                SizedBox(height: 8.h),
+                // X-axis labels
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: items.map((item) {
+                    // For many items (monthly days), show every 5th
+                    final showLabel = items.length <= 12 ||
+                        items.indexOf(item) == 0 ||
+                        (items.indexOf(item) + 1) % 5 == 0 ||
+                        items.indexOf(item) == items.length - 1;
+                    return Expanded(
+                      child: Center(
+                        child: AppText(
+                          showLabel ? item.label : '',
+                          style: AppTextStyles.xs12Regular.copyWith(
+                            color: const Color(0xFF828282),
+                            fontSize: items.length > 12 ? 8.sp : 11.sp,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),
@@ -430,107 +580,49 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       ),
     );
   }
+}
 
-  Widget _buildBars() {
-    switch (selectedPeriod) {
-      case "Weekly":
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: const [
-            _Bar(day: "Mon", value: 70, width: 20),
-            _Bar(day: "Tue", value: 85, width: 20),
-            _Bar(day: "Wed", value: 65, width: 20),
-            _Bar(day: "Thu", value: 90, width: 20),
-            _Bar(day: "Fri", value: 75, width: 20),
-            _Bar(day: "Sat", value: 80, width: 20),
-            _Bar(day: "Sun", value: 70, width: 20),
-          ],
-        );
-      case "Monthly":
-        int daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: List.generate(daysInMonth, (index) {
-            double barWidth = (240 / daysInMonth) - 2;
-            if (barWidth < 4) barWidth = 4;
-            return _Bar(
-              day: "${index + 1}",
-              value: 65 + (index % 5) * 6.0,
-              width: barWidth,
-            );
-          }),
-        );
-      case "Yearly":
-      default:
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: const [
-            _Bar(day: "Jan", value: 70, width: 14),
-            _Bar(day: "Feb", value: 75, width: 14),
-            _Bar(day: "Mar", value: 85, width: 14),
-            _Bar(day: "Apr", value: 72, width: 14),
-            _Bar(day: "May", value: 80, width: 14),
-            _Bar(day: "Jun", value: 90, width: 14),
-            _Bar(day: "Jul", value: 78, width: 14),
-            _Bar(day: "Aug", value: 74, width: 14),
-            _Bar(day: "Sep", value: 71, width: 14),
-            _Bar(day: "Oct", value: 76, width: 14),
-            _Bar(day: "Nov", value: 82, width: 14),
-            _Bar(day: "Dec", value: 75, width: 14),
-          ],
-        );
-    }
-  }
+class _EarningsBar extends StatelessWidget {
+  final double heightFactor; // 0.0 – 1.0
+  final double width;
 
-  Widget _buildLabels() {
-    List<String> labels;
-    switch (selectedPeriod) {
-      case "Weekly":
-        labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-        break;
-      case "Monthly":
-        int daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
-        labels = List.generate(daysInMonth, (index) {
-          int day = index + 1;
-          if (day == 1 || day % 5 == 0 || day == daysInMonth) {
-            return "$day";
-          }
-          return "";
-        });
-        break;
-      case "Yearly":
-      default:
-        labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        break;
-    }
+  const _EarningsBar({required this.heightFactor, required this.width});
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: labels.map((label) {
-        String displayText = label;
-        if (selectedPeriod == "Yearly" && label.isNotEmpty) {
-          displayText = label.substring(0, 1);
-        }
-        return Expanded(
-          child: Center(
-            child: AppText(
-              displayText,
-              style: AppTextStyles.xs12Regular.copyWith(
-                color: const Color(0xFF828282),
-                fontSize: selectedPeriod == "Monthly" ? 10.sp : 12.sp,
-              ),
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+        Container(
+          width: width.w,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F4F9),
+            borderRadius: BorderRadius.circular(4.r),
+          ),
+        ),
+        FractionallySizedBox(
+          heightFactor: heightFactor.clamp(0.02, 1.0),
+          child: Container(
+            width: width.w,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2D2D),
+              borderRadius: BorderRadius.circular(4.r),
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
+}
 
+// ─── Top Class Item ────────────────────────────────────────────────────────────
 
-  Widget _buildClassItem(String title) {
+class _TopClassItem extends StatelessWidget {
+  const _TopClassItem({required this.cls});
+  final TrainerTopClassModel cls;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.all(16.w),
@@ -547,12 +639,51 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
               color: AppColors.bgTertiary,
               borderRadius: BorderRadius.circular(10.r),
             ),
-            child: Icon(Icons.fitness_center_rounded, size: 20, color: AppColors.textTertiary),
+            child: Icon(Icons.fitness_center_rounded,
+                size: 20, color: AppColors.textTertiary),
           ),
           SizedBox(width: 16.w),
-          AppText(
-            title,
-            style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText(
+                  cls.name,
+                  style: AppTextStyles.sm14Medium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                AppText(
+                  '${cls.displayClassType} · ${cls.displaySessionFormat}',
+                  style: AppTextStyles.xs12Regular
+                      .copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              AppText(
+                '${cls.bookingCount} bookings',
+                style: AppTextStyles.xs12Regular.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 2.h),
+              AppText(
+                NumberFormat.currency(symbol: '\$', decimalDigits: 0)
+                    .format(cls.totalRevenue),
+                style: AppTextStyles.xs12Regular.copyWith(
+                  color: const Color(0xFF16A34A),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -560,14 +691,13 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   }
 }
 
+// ─── Shared Widgets ────────────────────────────────────────────────────────────
+
 class _HeaderCircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _HeaderCircleButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _HeaderCircleButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -592,9 +722,7 @@ class _HeaderCircleButton extends StatelessWidget {
             ),
           ],
         ),
-        child: Center(
-          child: Icon(icon, size: 20, color: Colors.black),
-        ),
+        child: Center(child: Icon(icon, size: 20, color: Colors.black)),
       ),
     );
   }
@@ -626,7 +754,6 @@ class _ProfileStatCard extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, 1),
             blurRadius: 1,
-            spreadRadius: 0,
           ),
         ],
       ),
@@ -637,56 +764,19 @@ class _ProfileStatCard extends StatelessWidget {
           const Spacer(),
           AppText(
             value,
-            style: AppTextStyles.xl20SemiBold.copyWith(color: AppColors.textPrimary, fontSize: 24.sp),
+            style: AppTextStyles.xl20SemiBold.copyWith(
+              color: AppColors.textPrimary,
+              fontSize: 22.sp,
+            ),
           ),
           SizedBox(height: 4.h),
           AppText(
             title,
-            style: AppTextStyles.xs12Regular.copyWith(color: const Color(0xFF828282)),
+            style: AppTextStyles.xs12Regular
+                .copyWith(color: const Color(0xFF828282)),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Bar extends StatelessWidget {
-  final String day;
-  final double value; // Value between 60 and 100
-  final double width;
-
-  const _Bar({required this.day, required this.value, required this.width});
-
-  @override
-  Widget build(BuildContext context) {
-    // Scaling value from 60-100 range to 0-1 percentage
-    double heightFactor = (value - 60) / 40;
-    if (heightFactor < 0) heightFactor = 0;
-    if (heightFactor > 1) heightFactor = 1;
-
-    return Stack(
-      alignment: Alignment.bottomCenter,
-      children: [
-        // Background Column (Full height of the grid area)
-        Container(
-          width: width.w,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F4F9),
-            borderRadius: BorderRadius.circular(4.r),
-          ),
-        ),
-        // Data Bar (Actual value)
-        FractionallySizedBox(
-          heightFactor: heightFactor,
-          child: Container(
-            width: width.w,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2D2D2D),
-              borderRadius: BorderRadius.circular(4.r),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -715,7 +805,8 @@ class _DashedLinePainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 1;
     while (startX < size.width) {
-      canvas.drawLine(Offset(startX, 0), Offset(startX + dashWidth, 0), paint);
+      canvas.drawLine(
+          Offset(startX, 0), Offset(startX + dashWidth, 0), paint);
       startX += dashWidth + dashSpace;
     }
   }

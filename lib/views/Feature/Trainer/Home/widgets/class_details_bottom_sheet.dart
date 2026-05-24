@@ -386,11 +386,15 @@ class _StatCard extends StatelessWidget {
           AppText(
             value,
             style: AppTextStyles.sm14SemiBold.copyWith(color: AppColors.textPrimary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           SizedBox(height: 4.h),
           AppText(
             label,
             style: AppTextStyles.xs12Regular.copyWith(color: AppColors.textTertiary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

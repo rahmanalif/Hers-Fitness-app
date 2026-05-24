@@ -116,6 +116,8 @@ class TrainerClassModel {
   final int capacity;
   final List<AvailabilitySlotModel> availableSlots;
   final String? imageUrl;
+  /// 'ACTIVE' | 'COMPLETED' — returned by the API when includeCompleted=true
+  final String status;
 
   const TrainerClassModel({
     this.id,
@@ -127,6 +129,7 @@ class TrainerClassModel {
     required this.capacity,
     required this.availableSlots,
     this.imageUrl,
+    this.status = 'ACTIVE',
   });
 
   factory TrainerClassModel.fromJson(Map<String, dynamic> json) {
@@ -167,6 +170,7 @@ class TrainerClassModel {
         'trainerImageUrl',
         'trainer_image_url',
       ]),
+      status: _readString(json, const ['status']) ?? 'ACTIVE',
     );
   }
 
@@ -190,6 +194,7 @@ class TrainerClassModel {
       'availableSlots': availableSlots.map((slot) => slot.toJson()).toList(),
       'series': displaySessionFormat,
       'imageUrl': imageUrl ?? '',
+      'status': status,
     };
   }
 

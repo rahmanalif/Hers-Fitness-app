@@ -12,6 +12,15 @@ class ChatSocketService {
   final TokenStorage _tokenStorage;
   io.Socket? _socket;
 
+  // Completer that resolves when the socket's onConnect fires.
+  // Prevents _joinConversation from being emitted before the handshake
+  // has completed (the root cause of real-time messages not arriving).
+  Completer<void>? _connectCompleter;
+
+  // Callback invoked by the controller so it can re-emit chat:join after
+  // an automatic reconnect.
+  VoidCallback? onReconnected;
+
   final _messageController =
       StreamController<Map<String, dynamic>>.broadcast();
   final _typingController =
@@ -30,14 +39,30 @@ class ChatSocketService {
 
   bool get isConnected => _socket?.connected == true;
 
+  /// Connects the socket and waits until the connection is truly established
+  /// (the onConnect event fires) before returning.
+  ///
+  /// Previously this method called [socket.connect()] and returned immediately,
+  /// causing [join()] to be called while the socket was still mid-handshake.
+  /// [_emit] checks [socket.connected], which is still false at that point, so
+  /// the join event was silently dropped and the server never added the client
+  /// to the room — breaking real-time message delivery.
   Future<void> connect() async {
     if (isConnected) return;
+
+    // If a connection attempt is already in-flight, wait for it instead of
+    // creating a second socket.
+    if (_connectCompleter != null) {
+      return _connectCompleter!.future;
+    }
 
     final token = await _tokenStorage.getAccessToken();
     if (token == null || token.isEmpty) return;
 
     final socketUrl = _socketUrl;
     if (socketUrl.isEmpty) return;
+
+    _connectCompleter = Completer<void>();
 
     final socket = io.io(
       socketUrl,
@@ -49,11 +74,30 @@ class ChatSocketService {
           .build(),
     );
 
-    socket.onConnect((_) => debugPrint('Chat socket connected'));
+    socket.onConnect((_) {
+      debugPrint('Chat socket connected');
+      // Complete the in-flight connect() call so callers can proceed to join.
+      if (_connectCompleter != null && !_connectCompleter!.isCompleted) {
+        _connectCompleter!.complete();
+      }
+      _connectCompleter = null;
+      // If the socket reconnected automatically (after a drop), notify the
+      // controller so it can re-emit chat:join for the active conversation.
+      onReconnected?.call();
+    });
+
     socket.onDisconnect((_) => debugPrint('Chat socket disconnected'));
+
     socket.onConnectError((error) {
       debugPrint('Chat socket connect error: $error');
+      if (_connectCompleter != null && !_connectCompleter!.isCompleted) {
+        // Complete with null (not an error) so the caller doesn't crash; the
+        // subsequent _emit guard will handle the not-connected state gracefully.
+        _connectCompleter!.complete();
+      }
+      _connectCompleter = null;
     });
+
     socket.onError((error) => debugPrint('Chat socket error: $error'));
 
     socket.on('chat:message', (payload) {
@@ -79,6 +123,15 @@ class ChatSocketService {
 
     _socket = socket;
     socket.connect();
+
+    // Wait for the handshake to complete (or fail) before returning, so that
+    // callers can safely emit events immediately after awaiting connect().
+    try {
+      await _connectCompleter!.future.timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Timeout or error: proceed anyway; _emit will no-op if not connected.
+      _connectCompleter = null;
+    }
   }
 
   void join(String conversationId) {
@@ -135,6 +188,7 @@ class ChatSocketService {
   }
 
   void disconnect() {
+    _connectCompleter = null;
     _socket?.dispose();
     _socket = null;
   }

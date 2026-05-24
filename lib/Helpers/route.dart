@@ -17,6 +17,7 @@ import '../views/Feature/Member/MyClasses/my_classes_screen.dart';
 import '../views/Feature/Member/Profile/member_account_setting_screen.dart';
 import '../views/Feature/Member/Profile/member_personal_info_screen.dart';
 import '../views/Feature/Member/Profile/member_profile_screen.dart';
+import '../views/Feature/Member/Profile/member_transactions_screen.dart';
 import '../views/Feature/Member/Trainer/trainer_list_screen.dart';
 import '../views/Feature/Member/Trainer/trainer_details_screen.dart';
 import '../views/Feature/Member/Trainer/trainer_reviews_screen.dart';
@@ -36,6 +37,7 @@ import '../views/Feature/Trainer/Profile/account_settings_screen.dart';
 import '../views/Feature/Trainer/Profile/notification_settings_screen.dart';
 import '../views/Feature/Trainer/Profile/personal_info_screen.dart';
 import '../views/Feature/Trainer/Profile/trainer_profile_screen.dart';
+import '../views/Feature/Trainer/Profile/trainer_transactions_screen.dart';
 import '../views/Feature/Trainer/Profile/change_password_screen.dart'
     as profile;
 import '../views/Feature/Trainer/Schedule/schedule_screen.dart';
@@ -89,6 +91,8 @@ class AppRoutes {
   static String memberProfileScreen = "/member_profile_screen";
   static String memberAccountSettingsScreen = "/member_account_setting_screen";
   static String memberPersonalInfoScreen = "/member_personal_info_screen";
+  static String memberTransactionsScreen = "/member_transactions_screen";
+  static String trainerTransactionsScreen = "/trainer_transactions_screen";
   static String verifyIdentityScreen = "/verify_identity_screen";
   static String identityDocumentTypeScreen = "/identity_document_type_screen";
   static String identityCameraScreen = "/identity_camera_screen";
@@ -236,6 +240,14 @@ class AppRoutes {
     GetPage(
       name: memberPersonalInfoScreen,
       page: () => MemberPersonalInfoScreen(),
+    ),
+    GetPage(
+      name: memberTransactionsScreen,
+      page: () => const MemberTransactionsScreen(),
+    ),
+    GetPage(
+      name: trainerTransactionsScreen,
+      page: () => const TrainerTransactionsScreen(),
     ),
     GetPage(
       name: verifyIdentityScreen,

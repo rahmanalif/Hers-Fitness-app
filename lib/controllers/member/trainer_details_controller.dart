@@ -229,7 +229,8 @@ class TrainerDetailsController extends GetxController {
       'price': _formatStartingPrice(
         _readString(data, const ['startingPrice', 'starting_price']),
       ),
-      'priceRange': _readString(data, const ['priceRange', 'price_range']),
+      'priceRange': _readString(data, const ['priceRange', 'price_range']) ??
+          _readString(data, const ['startingPrice', 'starting_price']),
       'experience':
           _readString(data, const [
             'instructorExperience',

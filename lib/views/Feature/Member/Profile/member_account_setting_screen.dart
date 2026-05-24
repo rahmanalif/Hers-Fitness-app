@@ -1,3 +1,4 @@
+import 'package:fitness/controllers/member/member_profile_controller.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/services/auth_service.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
@@ -8,8 +9,25 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import '../../../../Helpers/route.dart';
 
-class MemberAccountSettingsScreen extends StatelessWidget {
+class MemberAccountSettingsScreen extends StatefulWidget {
   const MemberAccountSettingsScreen({super.key});
+
+  @override
+  State<MemberAccountSettingsScreen> createState() =>
+      _MemberAccountSettingsScreenState();
+}
+
+class _MemberAccountSettingsScreenState
+    extends State<MemberAccountSettingsScreen> {
+  late final MemberProfileController _profileController;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileController = Get.isRegistered<MemberProfileController>()
+        ? Get.find<MemberProfileController>()
+        : Get.put(MemberProfileController());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +55,7 @@ class MemberAccountSettingsScreen extends StatelessWidget {
                 _buildSettingItem(
                   icon: Icons.credit_card_rounded,
                   title: "Transactions",
-                  onTap: () {},
+                  onTap: () => Get.toNamed(AppRoutes.memberTransactionsScreen),
                 ),
 
                 SizedBox(height: 24.h),
@@ -158,9 +176,24 @@ class MemberAccountSettingsScreen extends StatelessWidget {
                   SizedBox(width: 12.w),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.of(context).pop();
-                        // Handle delete logic here
+                        Get.dialog(
+                          Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.actionPrimary,
+                            ),
+                          ),
+                          barrierDismissible: false,
+                        );
+                        final success = await _profileController.deleteAccount();
+                        if (Get.isDialogOpen == true) Get.back();
+                        if (success) {
+                          try {
+                            await AuthService().logout();
+                          } catch (_) {}
+                          Get.offAllNamed(AppRoutes.signInScreen);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFEF4444),

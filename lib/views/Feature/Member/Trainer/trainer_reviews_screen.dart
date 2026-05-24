@@ -87,7 +87,7 @@ class TrainerReviewsScreen extends StatelessWidget {
                             SizedBox(height: 32.h),
                             Text(
                               "Recent",
-                              style: AppTextStyles.base16Medium.copyWith(color: AppColors.textPrimary),
+                              style: AppTextStyles.lg18Bold.copyWith(color: AppColors.textPrimary),
                             ),
                             SizedBox(height: 16.h),
                           ],
@@ -121,25 +121,35 @@ class TrainerReviewsScreen extends StatelessWidget {
       padding: EdgeInsets.all(24.r),
       decoration: BoxDecoration(
         color: const Color(0xFFF9F9F9),
-        borderRadius: BorderRadius.circular(32.r),
+        borderRadius: BorderRadius.circular(24.r),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Column(
-            children: [
-              Text(
-                "4.5",
-                style: AppTextStyles.base16Medium.copyWith(color: AppColors.textPrimary, fontSize: 48.sp),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                "87 Reviews",
-                style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-          SizedBox(width: 32.w),
           Expanded(
+            flex: 2,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "4.5",
+                  style: AppTextStyles.base16Medium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontSize: 56.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  "87 Reviews",
+                  style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 20.w),
+          Expanded(
+            flex: 3,
             child: Column(
               children: [
                 _buildRatingBar(5, 0.9),
@@ -157,21 +167,21 @@ class TrainerReviewsScreen extends StatelessWidget {
 
   Widget _buildRatingBar(int star, double progress) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 4.h),
+      padding: EdgeInsets.only(bottom: 6.h),
       child: Row(
         children: [
           Text("$star", style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textSecondary)),
           SizedBox(width: 4.w),
-          Icon(Icons.star, color: Colors.orange, size: 12.sp),
+          Icon(Icons.star, color: const Color(0xFFFFC107), size: 14.sp),
           SizedBox(width: 8.w),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10.r),
               child: LinearProgressIndicator(
                 value: progress,
-                backgroundColor: AppColors.borderPrimary,
+                backgroundColor: const Color(0xFFFFE5E9),
                 color: AppColors.actionPrimary,
-                minHeight: 6.h,
+                minHeight: 8.h,
               ),
             ),
           ),

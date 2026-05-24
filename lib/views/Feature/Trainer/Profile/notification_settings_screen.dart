@@ -1,3 +1,4 @@
+import 'package:fitness/controllers/trainer/notification_settings_controller.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:fitness/views/Base/AppText/appText.dart';
@@ -6,60 +7,114 @@ import 'package:flutter_advanced_switch/flutter_advanced_switch.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
-class NotificationSettingsScreen extends StatefulWidget {
+class NotificationSettingsScreen extends StatelessWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
-}
-
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
-  final _pushController = ValueNotifier<bool>(true);
-  final _reminderController = ValueNotifier<bool>(true);
-  final _offersController = ValueNotifier<bool>(false);
-
-  @override
-  void dispose() {
-    _pushController.dispose();
-    _reminderController.dispose();
-    _offersController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final ctrl = Get.isRegistered<NotificationSettingsController>()
+        ? Get.find<NotificationSettingsController>()
+        : Get.put(NotificationSettingsController());
+
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: Column(
         children: [
           _buildHeader(context),
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
-              children: [
-                _buildSectionTitle("General"),
-                _buildSwitchItem(
-                  icon: Icons.notifications_none_rounded,
-                  title: "Push Notifications",
-                  controller: _pushController,
-                ),
-                _buildSwitchItem(
-                  icon: Icons.calendar_today_outlined,
-                  title: "Class Reminder Notification",
-                  controller: _reminderController,
-                ),
-                _buildSwitchItem(
-                  icon: Icons.monetization_on_outlined,
-                  title: "Offers Notifications",
-                  controller: _offersController,
-                ),
-              ],
-            ),
+            child: Obx(() {
+              if (ctrl.isLoading.value) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.actionPrimary,
+                  ),
+                );
+              }
+              final p = ctrl.prefs.value;
+              if (p == null) return const SizedBox.shrink();
+
+              return ListView(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+                children: [
+                  _buildSectionTitle('Bookings & Classes'),
+                  _buildSwitchItem(
+                    context: context,
+                    icon: Icons.event_available_outlined,
+                    title: 'New Booking',
+                    subtitle: 'When a member books one of your classes',
+                    value: p.newBooking,
+                    field: 'newBooking',
+                    ctrl: ctrl,
+                  ),
+                  _buildSwitchItem(
+                    context: context,
+                    icon: Icons.calendar_today_outlined,
+                    title: 'Class Reminder',
+                    subtitle: 'Reminder before your class starts',
+                    value: p.classReminder,
+                    field: 'classReminder',
+                    ctrl: ctrl,
+                  ),
+                  _buildSwitchItem(
+                    context: context,
+                    icon: Icons.how_to_reg_outlined,
+                    title: 'Class Check-In',
+                    subtitle: 'When a member checks into your class',
+                    value: p.classCheckIn,
+                    field: 'classCheckIn',
+                    ctrl: ctrl,
+                  ),
+                  SizedBox(height: 24.h),
+                  _buildSectionTitle('Payments'),
+                  _buildSwitchItem(
+                    context: context,
+                    icon: Icons.monetization_on_outlined,
+                    title: 'Payment Received',
+                    subtitle: 'When you receive a booking payment',
+                    value: p.paymentReceived,
+                    field: 'paymentReceived',
+                    ctrl: ctrl,
+                  ),
+                  SizedBox(height: 24.h),
+                  _buildSectionTitle('General'),
+                  _buildSwitchItem(
+                    context: context,
+                    icon: Icons.notifications_none_rounded,
+                    title: 'Push Notifications',
+                    subtitle: 'Receive push notifications on this device',
+                    value: p.pushNotifications,
+                    field: 'pushNotifications',
+                    ctrl: ctrl,
+                  ),
+                  _buildSwitchItem(
+                    context: context,
+                    icon: Icons.email_outlined,
+                    title: 'Email Notifications',
+                    subtitle: 'Receive summaries and updates by email',
+                    value: p.emailNotifications,
+                    field: 'emailNotifications',
+                    ctrl: ctrl,
+                  ),
+                  _buildSwitchItem(
+                    context: context,
+                    icon: Icons.campaign_outlined,
+                    title: 'System Announcements',
+                    subtitle: 'News and feature updates from Hers Fitness',
+                    value: p.systemAnnouncements,
+                    field: 'systemAnnouncements',
+                    ctrl: ctrl,
+                  ),
+                ],
+              );
+            }),
           ),
         ],
       ),
     );
   }
+
+  // ── Header ─────────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -89,15 +144,17 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 color: Colors.white,
               ),
               child: const Center(
-                child: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Colors.black),
+                child: Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 20, color: Colors.black),
               ),
             ),
           ),
           Expanded(
             child: Center(
               child: AppText(
-                "Notifications Settings",
-                style: AppTextStyles.base16SemiBold.copyWith(color: Colors.white, fontSize: 20.sp),
+                'Notifications Settings',
+                style: AppTextStyles.base16SemiBold
+                    .copyWith(color: Colors.white, fontSize: 20.sp),
               ),
             ),
           ),
@@ -112,16 +169,25 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       padding: EdgeInsets.only(bottom: 12.h, left: 4.w),
       child: AppText(
         title,
-        style: AppTextStyles.base16SemiBold.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+        style: AppTextStyles.base16SemiBold.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 
   Widget _buildSwitchItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
-    required ValueNotifier<bool> controller,
+    required String subtitle,
+    required bool value,
+    required String field,
+    required NotificationSettingsController ctrl,
   }) {
+    final switchController = ValueNotifier<bool>(value);
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
@@ -143,17 +209,34 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           ),
           SizedBox(width: 12.w),
           Expanded(
-            child: AppText(
-              title,
-              style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText(
+                  title,
+                  style: AppTextStyles.sm14Medium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                AppText(
+                  subtitle,
+                  style: AppTextStyles.xs12Regular.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
+          SizedBox(width: 8.w),
           AdvancedSwitch(
-            controller: controller,
+            controller: switchController,
             activeColor: AppColors.actionPrimary,
             inactiveColor: const Color(0xFF94A3B8),
             width: 44.w,
             height: 24.h,
+            onChanged: (v) => ctrl.toggle(field, v),
           ),
         ],
       ),

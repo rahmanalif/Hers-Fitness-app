@@ -7,7 +7,8 @@
       "Bash(flutter analyze *)",
       "Bash(Select-Object -First 30 FullName)",
       "Bash(find c:\\\\\\\\dev\\\\\\\\HerFitness\\\\\\\\lib -type d)",
-      "Bash(grep -E \"\\\\.dart$\")"
+      "Bash(grep -E \"\\\\.dart$\")",
+      "Bash(Select-String -Path \"c:\\\\dev\\\\HerFitness\\\\pubspec.yaml\" -Pattern \"share|flutter_sharing|url_launcher\")"
     ]
   }
 }
