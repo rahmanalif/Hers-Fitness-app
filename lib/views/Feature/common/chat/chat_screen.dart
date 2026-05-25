@@ -477,7 +477,41 @@ class _ChatScreenState extends State<ChatScreen> {
       return Image.file(File(imageUrl), width: 190.w, fit: BoxFit.cover);
     }
 
-    return Image.network(imageUrl, width: 190.w, fit: BoxFit.cover);
+    return Image.network(
+      imageUrl,
+      width: 190.w,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return SizedBox(
+          width: 190.w,
+          height: 140.h,
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+              color: AppColors.actionPrimary,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return SizedBox(
+          width: 190.w,
+          height: 140.h,
+          child: Center(
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: AppColors.textTertiary,
+              size: 32.sp,
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showImageSourceSheet() {

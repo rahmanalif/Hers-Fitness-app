@@ -262,6 +262,10 @@ class ChatController extends GetxController {
     messageController.addListener(_handleComposerChanged);
     _bindSocketEvents();
     unawaited(fetchConversations());
+    // Connect the socket immediately so the backend's handleConnection can
+    // mark the user as ACTIVE across all their conversations the moment the
+    // app is open — not just when a specific chat screen is opened.
+    unawaited(_connectSocket());
   }
 
   Future<void> fetchConversations({bool showError = false}) async {
@@ -326,10 +330,10 @@ class ChatController extends GetxController {
   }
 
   void closeActiveConversation() {
-    final conversationId = _joinedConversationId;
-    if (conversationId != null) {
-      _socketService.leave(conversationId);
-    }
+    // With in-app active status, we do NOT emit chat:leave when the user
+    // navigates away from a conversation screen. The user is still in the app
+    // so they stay ACTIVE. INACTIVE is only set when the socket disconnects
+    // (app closed / sent to background and OS kills the connection).
     _joinedConversationId = null;
     isParticipantTyping.value = false;
     _typingStopTimer?.cancel();
@@ -683,6 +687,19 @@ class ChatController extends GetxController {
     if (model.id.isEmpty) return;
 
     final message = ChatMessage.fromModel(model, currentUserId: _currentUserId);
+
+    // Own messages are confirmed via the REST response (_replacePendingMessage).
+    // broadcastNewMessage on the backend also emits chat:message to the sender's
+    // own socket. If the confirmed message is already in the list (REST won the
+    // race), ignore the echo — replacing the same widget would restart
+    // Image.network loading and cause the image to flash blank again.
+    if (message.isMe) {
+      final alreadyConfirmed = messages.any(
+        (m) => m.id == message.id && !m.isPending,
+      );
+      if (alreadyConfirmed) return;
+    }
+
     _addOrReplaceMessage(message);
 
     final contact = selectedContact.value;
@@ -862,6 +879,7 @@ class ChatController extends GetxController {
 
       final pendingIndex = messages.indexWhere((item) {
         return item.isPending &&
+            item.isMe == message.isMe &&
             item.text == message.text &&
             item.messageType == message.messageType &&
             item.conversationId == message.conversationId;
@@ -978,6 +996,17 @@ class ChatController extends GetxController {
   void _replacePendingMessage(String pendingId, ChatMessage replacement) {
     final index = messages.indexWhere((message) => message.id == pendingId);
     if (index == -1) {
+      // The socket echo (from broadcastNewMessage) may have already replaced
+      // the pending before the REST response was processed here. If the
+      // confirmed message is already in the list and not pending, there is
+      // nothing to do — triggering _addOrReplaceMessage would just replace the
+      // widget with identical data, restarting Image.network loading.
+      if (replacement.id.isNotEmpty) {
+        final alreadyConfirmed = messages.any(
+          (m) => m.id == replacement.id && !m.isPending,
+        );
+        if (alreadyConfirmed) return;
+      }
       _addOrReplaceMessage(replacement);
       return;
     }
