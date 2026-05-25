@@ -698,6 +698,17 @@ class ChatController extends GetxController {
         (m) => m.id == message.id && !m.isPending,
       );
       if (alreadyConfirmed) return;
+
+      // IMAGE guard: if the socket echo for our own IMAGE message has no
+      // attachmentUrl, the backend broadcast omitted the upload URL.  Allowing
+      // this echo to replace the pending (which holds the local file path)
+      // would wipe the URL and leave the image bubble blank — the subsequent
+      // REST response would see the message as "already confirmed" and skip
+      // the update.  Skip the echo here; _replacePendingMessage will apply
+      // the correct Cloudinary URL once the REST response arrives.
+      if (message.messageType == 'IMAGE' && message.attachmentUrl == null) {
+        return;
+      }
     }
 
     _addOrReplaceMessage(message);
@@ -997,15 +1008,28 @@ class ChatController extends GetxController {
     final index = messages.indexWhere((message) => message.id == pendingId);
     if (index == -1) {
       // The socket echo (from broadcastNewMessage) may have already replaced
-      // the pending before the REST response was processed here. If the
-      // confirmed message is already in the list and not pending, there is
-      // nothing to do — triggering _addOrReplaceMessage would just replace the
-      // widget with identical data, restarting Image.network loading.
+      // the pending before the REST response was processed here.
       if (replacement.id.isNotEmpty) {
-        final alreadyConfirmed = messages.any(
+        final confirmedIndex = messages.indexWhere(
           (m) => m.id == replacement.id && !m.isPending,
         );
-        if (alreadyConfirmed) return;
+        if (confirmedIndex != -1) {
+          // The echo is already confirmed.  For IMAGE messages the socket
+          // broadcast can arrive without an attachmentUrl (the backend may not
+          // include it in the room event).  The REST response always has the
+          // correct Cloudinary URL — apply it now so the bubble renders.
+          final confirmed = messages[confirmedIndex];
+          if (confirmed.messageType == 'IMAGE' &&
+              confirmed.attachmentUrl == null &&
+              replacement.attachmentUrl != null) {
+            messages[confirmedIndex] = confirmed.copyWith(
+              attachmentUrl: replacement.attachmentUrl,
+              attachmentType: replacement.attachmentType,
+            );
+            _cacheCurrentMessages();
+          }
+          return;
+        }
       }
       _addOrReplaceMessage(replacement);
       return;

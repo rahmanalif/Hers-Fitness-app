@@ -95,14 +95,25 @@ class NotificationSettingsController extends GetxController {
     bool value,
   ) {
     switch (field) {
+      // ── Trainer fields ──────────────────────────────────────────────────
       case 'newBooking':
         return current.copyWith(newBooking: value);
-      case 'classReminder':
-        return current.copyWith(classReminder: value);
-      case 'paymentReceived':
-        return current.copyWith(paymentReceived: value);
       case 'classCheckIn':
         return current.copyWith(classCheckIn: value);
+      case 'paymentReceived':
+        return current.copyWith(paymentReceived: value);
+      // ── Member fields ───────────────────────────────────────────────────
+      case 'bookingConfirmation':
+        return current.copyWith(bookingConfirmation: value);
+      case 'bookingCancellation':
+        return current.copyWith(bookingCancellation: value);
+      case 'paymentConfirmation':
+        return current.copyWith(paymentConfirmation: value);
+      case 'trainerMessage':
+        return current.copyWith(trainerMessage: value);
+      // ── Shared fields ───────────────────────────────────────────────────
+      case 'classReminder':
+        return current.copyWith(classReminder: value);
       case 'systemAnnouncements':
         return current.copyWith(systemAnnouncements: value);
       case 'emailNotifications':
