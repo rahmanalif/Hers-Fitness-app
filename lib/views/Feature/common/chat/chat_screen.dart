@@ -215,20 +215,67 @@ class _ChatScreenState extends State<ChatScreen> {
           }
 
           final message = controller.messages[index];
-          final showTimeDivider =
-              index == 0 ||
-              controller.messages[index].time !=
-                  controller.messages[index - 1].time;
+          // Show a day divider whenever the calendar date changes between
+          // consecutive messages (or for the very first message in the list).
+          final showDayDivider = index == 0 ||
+              !_isSameDay(
+                controller.messages[index].createdAt,
+                controller.messages[index - 1].createdAt,
+              );
 
           return Column(
             children: [
-              if (showTimeDivider) _buildTimeDivider(message.time),
+              if (showDayDivider)
+                _buildTimeDivider(_formatDayLabel(message.createdAt)),
               _buildMessageBubble(message),
             ],
           );
         },
       );
     });
+  }
+
+  /// Returns true when [a] and [b] fall on the same calendar day.
+  /// Treats null dates as "epoch" so they never match a real message date.
+  bool _isSameDay(DateTime? a, DateTime? b) {
+    if (a == null || b == null) return false;
+    final la = a.toLocal();
+    final lb = b.toLocal();
+    return la.year == lb.year && la.month == lb.month && la.day == lb.day;
+  }
+
+  /// Converts a message date into a human-readable day label:
+  ///   Today · Yesterday · Monday … Sunday · Jan 5, 2024
+  String _formatDayLabel(DateTime? date) {
+    if (date == null) return '';
+    final local = date.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final msgDay = DateTime(local.year, local.month, local.day);
+    final diff = today.difference(msgDay).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) {
+      const weekdays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+      return weekdays[local.weekday - 1];
+    }
+
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final month = months[local.month - 1];
+    final year = local.year != now.year ? ', ${local.year}' : '';
+    return '$month ${local.day}$year';
   }
 
   Widget _buildTimeDivider(String time) {
@@ -297,25 +344,30 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                         ),
                 ),
-                if (message.isMe)
-                  Padding(
-                    padding: EdgeInsets.only(top: 4.h, right: 4.w),
-                    child: Text(
-                      message.isFailed
-                          ? 'Failed'
-                          : message.isPending
-                          ? 'Sending...'
-                          : message.seenAt != null
-                          ? 'Seen'
-                          : 'Sent',
-                      style: AppTextStyles.xxs9Regular.copyWith(
-                        color: message.isFailed
-                            ? AppColors.statusError
-                            : AppColors.textTertiary,
-                        letterSpacing: 0,
-                      ),
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: 4.h,
+                    right: message.isMe ? 4.w : 0,
+                    left: message.isMe ? 0 : 4.w,
+                  ),
+                  child: Text(
+                    message.isMe
+                        ? message.isFailed
+                            ? 'Failed'
+                            : message.isPending
+                            ? '${message.time}  ·  Sending…'
+                            : message.seenAt != null
+                            ? '${message.time}  ·  Seen'
+                            : '${message.time}  ·  Sent'
+                        : message.time,
+                    style: AppTextStyles.xxs9Regular.copyWith(
+                      color: message.isFailed
+                          ? AppColors.statusError
+                          : AppColors.textTertiary,
+                      letterSpacing: 0,
                     ),
                   ),
+                ),
               ],
             ),
           ),
