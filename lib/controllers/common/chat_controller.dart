@@ -751,49 +751,65 @@ class ChatController extends GetxController {
   }
 
   void _handleSocketStatus(Map<String, dynamic> payload) {
-    // The server emits the full ChatConversationResponseDto which carries BOTH
-    // member and trainer statuses. We iterate over contacts and apply whichever
-    // status field belongs to the OTHER participant (i.e. the one that is not
-    // the current user). The old code only picked up the trainer's status.
+    // Server emits the full ChatConversationResponseDto on join/leave/disconnect.
+    final conversationId = payload['id']?.toString();
     final memberUserId = payload['memberUserId']?.toString();
     final trainerUserId = payload['trainerUserId']?.toString();
     final memberStatus = payload['memberStatus']?.toString();
     final trainerStatus = payload['trainerStatus']?.toString();
 
-    // Fallback: legacy shape { userId, status } from simpler broadcasts.
-    final legacyUserId = payload['userId']?.toString();
-    final legacyStatus = payload['status']?.toString();
+    // Must have both participant IDs and both statuses to do anything useful.
+    if (memberUserId == null ||
+        trainerUserId == null ||
+        memberStatus == null ||
+        trainerStatus == null) {
+      return;
+    }
 
     for (var index = 0; index < contacts.length; index++) {
       final contact = contacts[index];
 
-      // Determine which participant's status changed for THIS contact.
+      // ── Step 1: find the right contact ──────────────────────────────────
+      // Primary: match by conversation ID (unambiguous).
+      // Fallback: match by the pair of participant IDs (covers cases where
+      //   the payload id field is absent or the contact was built differently).
+      final matchById =
+          conversationId != null && conversationId.isNotEmpty && contact.id == conversationId;
+      final matchByParticipants =
+          (contact.memberUserId == memberUserId && contact.trainerUserId == trainerUserId) ||
+          (contact.memberUserId == trainerUserId && contact.trainerUserId == memberUserId);
+
+      if (!matchById && !matchByParticipants) continue;
+
+      // ── Step 2: pick the OTHER participant's status ──────────────────────
+      // Priority 1 — use _currentUserId (loaded after first API call, most reliable).
+      // Priority 2 — use contact.participantUserId (set when the contact was built).
+      // Priority 3 — skip; we cannot determine which side is "us".
       bool? isActive;
 
-      if (memberUserId != null &&
-          trainerUserId != null &&
-          memberStatus != null &&
-          trainerStatus != null) {
-        // Full conversation payload — pick the OTHER participant's status.
-        final participantId = contact.participantUserId;
-        if (participantId == memberUserId) {
+      if (_currentUserId == memberUserId) {
+        // I am the member → the other person is the trainer.
+        isActive = trainerStatus.toUpperCase() == 'ACTIVE';
+      } else if (_currentUserId == trainerUserId) {
+        // I am the trainer → the other person is the member.
+        isActive = memberStatus.toUpperCase() == 'ACTIVE';
+      } else {
+        // _currentUserId not loaded yet — fall back to participantUserId.
+        final pid = contact.participantUserId;
+        if (pid == memberUserId) {
           isActive = memberStatus.toUpperCase() == 'ACTIVE';
-        } else if (participantId == trainerUserId) {
+        } else if (pid == trainerUserId) {
           isActive = trainerStatus.toUpperCase() == 'ACTIVE';
-        }
-      } else if (legacyUserId != null && legacyStatus != null) {
-        // Legacy single-user payload.
-        if (contact.participantUserId == legacyUserId ||
-            contact.trainerUserId == legacyUserId ||
-            contact.memberUserId == legacyUserId) {
-          isActive = legacyStatus.toUpperCase() == 'ACTIVE';
         }
       }
 
       if (isActive != null) {
         contacts[index] = contact.copyWith(isParticipantActive: isActive);
       }
+      // Don't break — a user could theoretically appear in multiple contacts
+      // (shouldn't happen with 1-to-1 chats, but safe to update all matches).
     }
+
     _refreshSelectedContact();
   }
 
