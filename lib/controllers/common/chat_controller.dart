@@ -693,7 +693,13 @@ class ChatController extends GetxController {
           updatedAt: message.createdAt ?? DateTime.now(),
         ),
       );
-      if (!message.isMe) markSeen(model.conversationId);
+      // Guard against _currentUserId being null: compare senderUserId directly
+      // so we never call markSeen on our own outgoing messages even if the
+      // current user ID hasn't been loaded yet.
+      final isOwnMessage = _currentUserId != null
+          ? model.senderUserId == _currentUserId
+          : false;
+      if (!isOwnMessage) markSeen(model.conversationId);
     } else {
       unawaited(fetchConversations());
     }
@@ -722,35 +728,70 @@ class ChatController extends GetxController {
       return;
     }
 
+    // The backend now sends seenAt as a top-level field alongside `messages`.
+    // Fall back to DateTime.now() if the field is absent (old server versions).
     final seenAt =
         DateTime.tryParse(payload['seenAt']?.toString() ?? '') ??
         DateTime.now();
-    messages.assignAll(
-      messages.map((message) {
-        if (!message.isMe || message.seenAt != null) return message;
-        return message.copyWith(seenAt: seenAt);
-      }),
+
+    // Only update messages sent by the current user that haven't been seen yet.
+    // We do NOT replace the whole list — just patch the seenAt field so the
+    // "Seen" receipt appears under the sender's bubbles.
+    final updated = messages.map((message) {
+      if (!message.isMe || message.seenAt != null) return message;
+      return message.copyWith(seenAt: seenAt);
+    }).toList();
+
+    // Skip the assignAll entirely if nothing actually changed — avoids an
+    // unnecessary GetX rebuild that can cause a brief flicker.
+    final anyChanged = updated.any(
+      (m) => m.seenAt != null && messages.any((o) => o.id == m.id && o.seenAt == null),
     );
+    if (anyChanged) messages.assignAll(updated);
   }
 
   void _handleSocketStatus(Map<String, dynamic> payload) {
-    final userId =
-        payload['userId']?.toString() ??
-        payload['trainerUserId']?.toString() ??
-        payload['memberUserId']?.toString();
-    final status =
-        payload['status']?.toString() ??
-        payload['trainerStatus']?.toString() ??
-        payload['memberStatus']?.toString();
-    if (userId == null || status == null) return;
+    // The server emits the full ChatConversationResponseDto which carries BOTH
+    // member and trainer statuses. We iterate over contacts and apply whichever
+    // status field belongs to the OTHER participant (i.e. the one that is not
+    // the current user). The old code only picked up the trainer's status.
+    final memberUserId = payload['memberUserId']?.toString();
+    final trainerUserId = payload['trainerUserId']?.toString();
+    final memberStatus = payload['memberStatus']?.toString();
+    final trainerStatus = payload['trainerStatus']?.toString();
 
-    final active = status.toUpperCase() == 'ACTIVE';
+    // Fallback: legacy shape { userId, status } from simpler broadcasts.
+    final legacyUserId = payload['userId']?.toString();
+    final legacyStatus = payload['status']?.toString();
+
     for (var index = 0; index < contacts.length; index++) {
       final contact = contacts[index];
-      if (contact.participantUserId == userId ||
-          contact.trainerUserId == userId ||
-          contact.memberUserId == userId) {
-        contacts[index] = contact.copyWith(isParticipantActive: active);
+
+      // Determine which participant's status changed for THIS contact.
+      bool? isActive;
+
+      if (memberUserId != null &&
+          trainerUserId != null &&
+          memberStatus != null &&
+          trainerStatus != null) {
+        // Full conversation payload — pick the OTHER participant's status.
+        final participantId = contact.participantUserId;
+        if (participantId == memberUserId) {
+          isActive = memberStatus.toUpperCase() == 'ACTIVE';
+        } else if (participantId == trainerUserId) {
+          isActive = trainerStatus.toUpperCase() == 'ACTIVE';
+        }
+      } else if (legacyUserId != null && legacyStatus != null) {
+        // Legacy single-user payload.
+        if (contact.participantUserId == legacyUserId ||
+            contact.trainerUserId == legacyUserId ||
+            contact.memberUserId == legacyUserId) {
+          isActive = legacyStatus.toUpperCase() == 'ACTIVE';
+        }
+      }
+
+      if (isActive != null) {
+        contacts[index] = contact.copyWith(isParticipantActive: isActive);
       }
     }
     _refreshSelectedContact();
