@@ -547,14 +547,21 @@ class TrainerDetailsScreen extends StatelessWidget {
   Widget _buildLocationSection() {
     return Obx(() {
       final trainer = controller.trainer.value ?? const <String, dynamic>{};
-      final lat = trainer['lat'] is num
+
+      // Extract raw values — they may be null, NaN, or Infinity if the trainer
+      // has no location set or the backend serialised a NaN coordinate.
+      final rawLat = trainer['lat'] is num
           ? (trainer['lat'] as num).toDouble()
-          : 23.8103;
-      final lng = trainer['lng'] is num
+          : null;
+      final rawLng = trainer['lng'] is num
           ? (trainer['lng'] as num).toDouble()
-          : 90.4125;
-      final point = LatLng(lat, lng);
-      
+          : null;
+
+      // Guard: LatLng throws if either coordinate is not finite (NaN / ±Infinity).
+      final hasLocation =
+          rawLat != null && rawLat.isFinite &&
+          rawLng != null && rawLng.isFinite;
+
       final locationLabel = trainer['locationLabel']?.toString() ?? '';
 
       return Padding(
@@ -578,38 +585,68 @@ class TrainerDetailsScreen extends StatelessWidget {
               ),
             ],
             SizedBox(height: 12.h),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(24.r),
-              child: SizedBox(
+            if (!hasLocation)
+              Container(
                 height: 200.h,
                 width: double.infinity,
-                child: FlutterMap(
-                  options: MapOptions(initialCenter: point, initialZoom: 13.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(24.r),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    TileLayer(
-                      urlTemplate:
-                          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-                      subdomains: const ['a', 'b', 'c', 'd'],
-                      userAgentPackageName: 'com.sparktech.herfitness',
+                    Icon(
+                      Icons.location_off_outlined,
+                      size: 36.sp,
+                      color: AppColors.textTertiary,
                     ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: point,
-                          width: 40.w,
-                          height: 40.w,
-                          child: Icon(
-                            Icons.location_on,
-                            color: AppColors.actionPrimary,
-                            size: 40.sp,
-                          ),
-                        ),
-                      ],
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Location not available',
+                      style: AppTextStyles.sm14Regular.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
+              )
+            else
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24.r),
+                child: SizedBox(
+                  height: 200.h,
+                  width: double.infinity,
+                  child: FlutterMap(
+                    options: MapOptions(
+                      initialCenter: LatLng(rawLat!, rawLng!),
+                      initialZoom: 13.0,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+                        subdomains: const ['a', 'b', 'c', 'd'],
+                        userAgentPackageName: 'com.sparktech.herfitness',
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: LatLng(rawLat, rawLng),
+                            width: 40.w,
+                            height: 40.w,
+                            child: Icon(
+                              Icons.location_on,
+                              color: AppColors.actionPrimary,
+                              size: 40.sp,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       );
