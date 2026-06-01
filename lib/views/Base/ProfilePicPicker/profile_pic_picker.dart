@@ -77,11 +77,11 @@ class _ProfilePicPickerState extends State<ProfilePicPicker> {
         GestureDetector(
           onTap: _pickImage,
           child: Container(
-            width: 80.w,
-            height: 80.w,
+            width: 100.w,
+            height: 100.w,
             decoration: BoxDecoration(
               shape: BoxShape.rectangle,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(24),
               image: _imageFile != null
                   ? DecorationImage(
                       image: FileImage(_imageFile!),
@@ -91,7 +91,7 @@ class _ProfilePicPickerState extends State<ProfilePicPicker> {
                       image: AssetImage(widget.placeholderImage),
                       fit: BoxFit.cover,
                     ),
-              border: Border.all(color: AppColors.actionPrimary, width: .5),
+              border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.1),
@@ -103,18 +103,17 @@ class _ProfilePicPickerState extends State<ProfilePicPicker> {
           ),
         ),
         Positioned(
-          bottom: -8,
+          bottom: -12,
           child: GestureDetector(
             onTap: _pickImage,
             child: Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                shape: BoxShape.rectangle,
-                borderRadius: BorderRadius.circular(5),
+                shape: BoxShape.circle,
                 color: Colors.black,
                 border: Border.all(color: Colors.white, width: 2),
               ),
-              child: const Icon(Icons.edit, color: Colors.white, size: 14),
+              child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 18),
             ),
           ),
         ),

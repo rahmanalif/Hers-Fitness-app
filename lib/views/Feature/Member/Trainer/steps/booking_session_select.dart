@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../../../controllers/member/book_trainer_controller.dart';
 import '../../../../../utils/AppColor/app_colors.dart';
 import '../../../../../utils/AppTextStyle/app_text_styles.dart';
 import '../widgets/booking_trainer_summary.dart';
-import '../widgets/booking_session_card.dart';
 
 class BookingSessionSelect extends StatelessWidget {
   final BookTrainerController controller;
@@ -23,20 +23,21 @@ class BookingSessionSelect extends StatelessWidget {
         children: [
           BookingTrainerSummary(controller: controller),
           SizedBox(height: 24.h),
-          
+
           Text(
-            'Select Class Type',
-            style: AppTextStyles.sm14SemiBold.copyWith(
+            '1. Select Class Type',
+            style: AppTextStyles.base16SemiBold.copyWith(
               color: AppColors.textPrimary,
               letterSpacing: 0,
             ),
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: 12.h),
           _ClassTypePicker(controller: controller),
-          SizedBox(height: 18.h),
+          SizedBox(height: 24.h),
+
           Text(
-            'Select Class',
-            style: AppTextStyles.sm14SemiBold.copyWith(
+            '2. Choose your Class',
+            style: AppTextStyles.base16SemiBold.copyWith(
               color: AppColors.textPrimary,
               letterSpacing: 0,
             ),
@@ -48,9 +49,9 @@ class BookingSessionSelect extends StatelessWidget {
           Obx(() {
             if (controller.isLoadingClasses.value &&
                 controller.selectedClassSlots.isEmpty) {
-              return Padding(
-                padding: EdgeInsets.symmetric(vertical: 24.h),
-                child: const Center(
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
                   child: CircularProgressIndicator(
                     color: AppColors.actionPrimary,
                   ),
@@ -62,135 +63,55 @@ class BookingSessionSelect extends StatelessWidget {
               return _emptyState(
                 controller.classesErrorMessage.value.isNotEmpty
                     ? controller.classesErrorMessage.value
-                    : 'No classes match this class type.',
+                    : 'No classes available for this type.',
                 isError: controller.classesErrorMessage.value.isNotEmpty,
               );
             }
 
-            if (controller.isMonthlySelection) {
-              return _buildMonthlySelection();
-            } else {
-              return _buildSingleSelection();
-            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Divider(
+                  height: 48.h,
+                  color: AppColors.borderPrimary.withValues(alpha: 0.5),
+                ),
+                Text(
+                  '3. Pick a Date & Time',
+                  style: AppTextStyles.base16SemiBold.copyWith(
+                    color: AppColors.textPrimary,
+                    letterSpacing: 0,
+                  ),
+                ),
+                if (controller.isMonthlySelection) ...[
+                  SizedBox(height: 16.h),
+                  _CalendarView(controller: controller),
+                  SizedBox(height: 16.h),
+                  Row(
+                    children: [
+                      _legendItem(const Color(0xFF22C55E), 'Booked'),
+                      SizedBox(width: 24.w),
+                      _legendItem(AppColors.actionPrimary, 'Available'),
+                    ],
+                  ),
+                ] else ...[
+                  SizedBox(height: 16.h),
+                  _SingleSessionDateInfo(controller: controller),
+                ],
+
+                SizedBox(height: 32.h),
+                if (controller.isMonthlySelection) ...[
+                  _SelectedMonthlySlots(controller: controller),
+                  SizedBox(height: 18.h),
+                ],
+                _TimeSlotsGrid(controller: controller),
+
+                SizedBox(height: 32.h),
+                _ReminderSwitch(controller: controller),
+              ],
+            );
           }),
         ],
       ),
-    );
-  }
-
-  Widget _buildSingleSelection() {
-    final slots = controller.selectedClassSlots;
-    if (slots.isEmpty) {
-      return _emptyState('No slots were returned for this class.');
-    }
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Set reminder',
-              style: AppTextStyles.base16Medium.copyWith(
-                color: AppColors.textPrimary,
-                letterSpacing: 0,
-              ),
-            ),
-            Obx(
-              () => Switch.adaptive(
-                value: controller.isReminderEnabled.value,
-                onChanged: (value) =>
-                    controller.isReminderEnabled.value = value,
-                activeColor: AppColors.actionPrimary,
-                activeTrackColor: AppColors.actionPrimary.withValues(alpha: 0.5),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 16.h),
-        ...slots.map((slot) {
-          final isSelected = controller.selectedSlotIds.contains(slot.id);
-          final klass = controller.selectedClass!;
-          
-          return Padding(
-            padding: EdgeInsets.only(bottom: 16.h),
-            child: BookingSessionCard(
-              title: klass.title,
-              date: slot.displayDate,
-              time: slot.displayTime,
-              location: klass.location ?? 'Location unavailable',
-              classType: klass.classType ?? 'In Person',
-              sessionFormat: klass.sessionFormat ?? 'One-to-One',
-              price: '\$${klass.price}',
-              isSelected: isSelected,
-              onTap: () => controller.selectSlot(slot),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildMonthlySelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Select Date',
-          style: AppTextStyles.sm14SemiBold.copyWith(
-            color: AppColors.textPrimary,
-            letterSpacing: 0,
-          ),
-        ),
-        SizedBox(height: 12.h),
-        _CalendarView(controller: controller),
-        SizedBox(height: 12.h),
-        Row(
-          children: [
-            _legendItem(const Color(0xFF22C55E), 'Booked'),
-            const Spacer(),
-            _legendItem(AppColors.actionPrimary, 'Available'),
-          ],
-        ),
-        SizedBox(height: 24.h),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Set reminder',
-              style: AppTextStyles.base16Medium.copyWith(
-                color: AppColors.textPrimary,
-                letterSpacing: 0,
-              ),
-            ),
-            Obx(
-              () => Switch.adaptive(
-                value: controller.isReminderEnabled.value,
-                onChanged: (value) =>
-                    controller.isReminderEnabled.value = value,
-                activeColor: AppColors.actionPrimary,
-                activeTrackColor: AppColors.actionPrimary.withValues(alpha: 0.5),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 24.h),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Select Time',
-              style: AppTextStyles.sm14SemiBold.copyWith(
-                color: AppColors.textPrimary,
-                letterSpacing: 0,
-              ),
-            ),
-            _AmPmToggle(controller: controller),
-          ],
-        ),
-        SizedBox(height: 16.h),
-        _TimeSlotsGrid(controller: controller),
-      ],
     );
   }
 
@@ -217,18 +138,106 @@ class BookingSessionSelect extends StatelessWidget {
   Widget _emptyState(String message, {bool isError = false}) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(14.r),
+      padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         color: AppColors.bgPrimary,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: AppColors.borderPrimary),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: isError
+              ? AppColors.statusError.withValues(alpha: 0.3)
+              : AppColors.borderPrimary,
+        ),
       ),
       child: Text(
         message,
-        style: AppTextStyles.xs12Medium.copyWith(
+        style: AppTextStyles.sm14Medium.copyWith(
           color: isError ? AppColors.statusError : AppColors.textSecondary,
           letterSpacing: 0,
         ),
+      ),
+    );
+  }
+}
+
+class _SingleSessionDateInfo extends StatelessWidget {
+  final BookTrainerController controller;
+  const _SingleSessionDateInfo({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final slots = controller.selectedClassSlots;
+    if (slots.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.r),
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.borderPrimary),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.event_available,
+            color: AppColors.actionPrimary,
+            size: 20.sp,
+          ),
+          SizedBox(width: 12.w),
+          Text(
+            slots.first.displayDate,
+            style: AppTextStyles.sm14Medium.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReminderSwitch extends StatelessWidget {
+  final BookTrainerController controller;
+  const _ReminderSwitch({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.borderPrimary),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.notifications_active_outlined,
+                color: AppColors.actionPrimary,
+                size: 20.sp,
+              ),
+              SizedBox(width: 12.w),
+              Text(
+                'Set reminder',
+                style: AppTextStyles.sm14Medium.copyWith(
+                  color: AppColors.textPrimary,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+          Obx(
+            () => Switch.adaptive(
+              value: controller.isReminderEnabled.value,
+              onChanged: (value) => controller.isReminderEnabled.value = value,
+              activeThumbColor: AppColors.actionPrimary,
+              activeTrackColor: AppColors.actionPrimary.withValues(alpha: 0.3),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -253,10 +262,9 @@ class _ClassTypePicker extends StatelessWidget {
               value: type,
               height: 42.h,
               child: Text(
-                type == 'IN_PERSON' ? 'In person' : 'Online',
-                style: AppTextStyles.xs12Medium.copyWith(
+                type == 'IN_PERSON' ? 'In person session' : 'Online session',
+                style: AppTextStyles.sm14Medium.copyWith(
                   color: AppColors.textPrimary,
-                  fontSize: 15.sp,
                   letterSpacing: 0,
                 ),
               ),
@@ -264,30 +272,50 @@ class _ClassTypePicker extends StatelessWidget {
           )
           .toList(),
       child: Container(
-        height: 48.h,
-        padding: EdgeInsets.symmetric(horizontal: 12.w),
+        height: 52.h,
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: AppColors.borderPrimary),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: AppColors.borderPrimary, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
+            Obx(
+              () => Icon(
+                controller.selectedClassType.value == 'IN_PERSON'
+                    ? Icons.location_on_outlined
+                    : Icons.videocam_outlined,
+                size: 20.sp,
+                color: AppColors.actionPrimary,
+              ),
+            ),
+            SizedBox(width: 12.w),
             Expanded(
               child: Obx(
                 () => Text(
                   controller.selectedClassType.value == 'IN_PERSON'
-                      ? 'In person'
-                      : 'Online',
-                  style: AppTextStyles.xs12Regular.copyWith(
+                      ? 'In person session'
+                      : 'Online session',
+                  style: AppTextStyles.sm14Medium.copyWith(
                     color: AppColors.textPrimary,
-                    fontSize: 15.sp,
                     letterSpacing: 0,
                   ),
                 ),
               ),
             ),
-            Icon(Icons.keyboard_arrow_down_rounded, size: 20.sp, color: AppColors.textPrimary),
+            Icon(
+              Icons.expand_more_rounded,
+              size: 22.sp,
+              color: AppColors.textTertiary,
+            ),
           ],
         ),
       ),
@@ -306,94 +334,71 @@ class _ClassSelector extends StatelessWidget {
       final classes = controller.filteredClasses;
 
       if (classes.isEmpty) {
-        final errorMessage = controller.classesErrorMessage.value;
-        return Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(14.r),
-          decoration: BoxDecoration(
-            color: AppColors.bgPrimary,
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: AppColors.borderPrimary),
-          ),
-          child: Text(
-            controller.isLoadingClasses.value
-                ? 'Loading classes...'
-                : errorMessage.isNotEmpty
-                ? errorMessage
-                : 'No active classes are available for this type.',
-            style: AppTextStyles.xs12Medium.copyWith(
-              color: errorMessage.isNotEmpty
-                  ? AppColors.statusError
-                  : AppColors.textSecondary,
-              letterSpacing: 0,
-            ),
-          ),
-        );
+        return const SizedBox.shrink();
       }
 
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(classes.length, (index) {
-            final item = classes[index];
-            final selected = controller.selectedClassIndex.value == index;
+      return Column(
+        children: List.generate(classes.length, (index) {
+          final item = classes[index];
+          final selected = controller.selectedClassIndex.value == index;
 
-            return GestureDetector(
-              onTap: () => controller.setClassIndex(index),
-              child: Container(
-                width: 210.w,
-                margin: EdgeInsets.only(right: 12.w),
-                padding: EdgeInsets.all(14.r),
-                decoration: BoxDecoration(
+          return GestureDetector(
+            onTap: () => controller.setClassIndex(index),
+            child: Container(
+              width: double.infinity,
+              margin: EdgeInsets.only(bottom: 12.h),
+              padding: EdgeInsets.all(16.r),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.actionPrimary.withValues(alpha: 0.05)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(
                   color: selected
                       ? AppColors.actionPrimary
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(
-                    color: selected
-                        ? AppColors.actionPrimary
-                        : AppColors.borderPrimary,
-                  ),
-                  boxShadow: selected ? [
-                    BoxShadow(
-                      color: AppColors.actionPrimary.withValues(alpha: 0.1),
-                      blurRadius: 8.r,
-                      offset: Offset(0, 4.h),
-                    )
-                  ] : null,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.xs12SemiBold.copyWith(
-                        color: selected
-                            ? Colors.white
-                            : AppColors.textPrimary,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    Text(
-                      '${_planLabel(item.sessionPlanType)} • ${item.availableSlots.where((slot) => slot.isBookable).length} available',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.xxs9Medium.copyWith(
-                        color: selected
-                            ? Colors.white.withValues(alpha: 0.8)
-                            : AppColors.textSecondary,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ],
+                      : AppColors.borderPrimary,
+                  width: selected ? 1.5 : 1,
                 ),
               ),
-            );
-          }),
-        ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: AppTextStyles.base16SemiBold.copyWith(
+                            color: AppColors.textPrimary,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          '${_planLabel(item.sessionPlanType)} • ${item.availableSlots.where((slot) => slot.isBookable).length} times available',
+                          style: AppTextStyles.xs12Medium.copyWith(
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (selected)
+                    const Icon(
+                      Icons.check_circle,
+                      color: AppColors.actionPrimary,
+                    )
+                  else
+                    const Icon(
+                      Icons.radio_button_off,
+                      color: AppColors.borderPrimary,
+                    ),
+                ],
+              ),
+            ),
+          );
+        }),
       );
     });
   }
@@ -401,7 +406,7 @@ class _ClassSelector extends StatelessWidget {
   String _planLabel(String? value) {
     final text = (value ?? '').toUpperCase();
     if (text.contains('MONTH')) return 'Monthly';
-    return 'Single';
+    return 'Single Session';
   }
 }
 
@@ -414,25 +419,26 @@ class _CalendarView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final focusedDate = controller.focusedDate.value;
-      final selectedDate = controller.selectedDate.value;
-      
-      // For monthly, we want to highlight all days that have a selected slot
-      final selectedSlotDates = controller.selectedSlots.map((s) {
-        final d = DateTime.tryParse(s.date);
-        return d != null ? DateTime(d.year, d.month, d.day) : null;
-      }).whereType<DateTime>().toSet();
+
+      final selectedSlotDates = controller.selectedSlots
+          .map((s) {
+            final d = DateTime.tryParse(s.date);
+            return d != null ? DateTime(d.year, d.month, d.day) : null;
+          })
+          .whereType<DateTime>()
+          .toSet();
 
       return Container(
         padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24.r),
-          border: Border.all(color: AppColors.borderSecondary),
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: AppColors.borderPrimary),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12.r,
-              offset: Offset(0, 6.h),
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -442,7 +448,7 @@ class _CalendarView extends StatelessWidget {
           focusedDay: focusedDate,
           selectedDayPredicate: (day) {
             final dateOnly = DateTime(day.year, day.month, day.day);
-            return selectedSlotDates.contains(dateOnly) || isSameDay(selectedDate, day);
+            return selectedSlotDates.contains(dateOnly);
           },
           onDaySelected: (selectedDay, focusedDay) {
             controller.selectDate(selectedDay, focusedDay);
@@ -450,33 +456,31 @@ class _CalendarView extends StatelessWidget {
           onPageChanged: (focusedDay) {
             controller.focusedDate.value = focusedDay;
           },
-          rowHeight: 44.h,
-          daysOfWeekHeight: 32.h,
+          rowHeight: 48.h,
           headerStyle: HeaderStyle(
             formatButtonVisible: false,
-            titleCentered: false,
+            titleCentered: true,
             titleTextStyle: AppTextStyles.base16SemiBold.copyWith(
               color: AppColors.textPrimary,
               letterSpacing: 0,
             ),
-            leftChevronVisible: true,
-            rightChevronVisible: true,
-            leftChevronIcon: Icon(Icons.chevron_left_rounded, size: 24.sp, color: AppColors.textPrimary),
-            rightChevronIcon: Icon(Icons.chevron_right_rounded, size: 24.sp, color: AppColors.textPrimary),
-            headerPadding: EdgeInsets.only(bottom: 16.h),
-            // Position chevrons on the right
-            leftChevronPadding: EdgeInsets.zero,
-            rightChevronPadding: EdgeInsets.zero,
-            leftChevronMargin: EdgeInsets.only(left: 180.w), 
+            leftChevronIcon: Icon(
+              Icons.chevron_left_rounded,
+              size: 24.sp,
+              color: AppColors.textPrimary,
+            ),
+            rightChevronIcon: Icon(
+              Icons.chevron_right_rounded,
+              size: 24.sp,
+              color: AppColors.textPrimary,
+            ),
           ),
           daysOfWeekStyle: DaysOfWeekStyle(
-            weekdayStyle: AppTextStyles.xxs9Medium.copyWith(
+            weekdayStyle: AppTextStyles.xs12Medium.copyWith(
               color: AppColors.textTertiary,
-              letterSpacing: 0,
             ),
-            weekendStyle: AppTextStyles.xxs9Medium.copyWith(
+            weekendStyle: AppTextStyles.xs12Medium.copyWith(
               color: AppColors.textTertiary,
-              letterSpacing: 0,
             ),
           ),
           calendarStyle: CalendarStyle(
@@ -486,26 +490,31 @@ class _CalendarView extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             selectedDecoration: const BoxDecoration(
-              color: AppColors.actionSecondary,
+              color: Colors.black,
               shape: BoxShape.circle,
             ),
             defaultTextStyle: AppTextStyles.sm14Medium.copyWith(
               color: AppColors.textPrimary,
             ),
-            weekendTextStyle: AppTextStyles.sm14Medium.copyWith(
-              color: AppColors.textPrimary,
-            ),
           ),
           calendarBuilders: CalendarBuilders(
             selectedBuilder: (context, day, focusedDay) {
-              return _dateBubble(day.day, AppColors.actionSecondary, Colors.white);
+              return _dateBubble(day.day, Colors.black, Colors.white);
             },
             defaultBuilder: (context, day, focusedDay) {
               if (controller.hasBookedSlot(day)) {
-                return _dateBubble(day.day, const Color(0xFF22C55E), Colors.white);
+                return _dateBubble(
+                  day.day,
+                  const Color(0xFF22C55E),
+                  Colors.white,
+                );
               }
               if (controller.hasAvailableSlot(day)) {
-                return _dateBubble(day.day, AppColors.actionPrimary, Colors.white);
+                return _dateBubble(
+                  day.day,
+                  AppColors.actionPrimary,
+                  Colors.white,
+                );
               }
               return null;
             },
@@ -518,8 +527,8 @@ class _CalendarView extends StatelessWidget {
   Widget _dateBubble(int day, Color background, Color foreground) {
     return Center(
       child: Container(
-        width: 32.w,
-        height: 32.w,
+        width: 34.w,
+        height: 34.w,
         alignment: Alignment.center,
         decoration: BoxDecoration(color: background, shape: BoxShape.circle),
         child: Text(
@@ -527,55 +536,6 @@ class _CalendarView extends StatelessWidget {
           style: AppTextStyles.sm14Medium.copyWith(
             color: foreground,
             letterSpacing: 0,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AmPmToggle extends StatelessWidget {
-  final BookTrainerController controller;
-
-  const _AmPmToggle({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      final selectedPeriod = controller.selectedPeriod.value;
-
-      return Container(
-        padding: EdgeInsets.all(4.r),
-        decoration: BoxDecoration(
-          color: AppColors.bgTertiary,
-          borderRadius: BorderRadius.circular(100.r),
-        ),
-        child: Row(
-          children: [
-            _toggleItem('AM', selectedPeriod),
-            _toggleItem('PM', selectedPeriod),
-          ],
-        ),
-      );
-    });
-  }
-
-  Widget _toggleItem(String label, String selectedPeriod) {
-    final isSelected = selectedPeriod == label;
-    return GestureDetector(
-      onTap: () => controller.setPeriod(label),
-      child: Container(
-        width: 58.w,
-        height: 32.h,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.actionPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(100.r),
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.xs12SemiBold.copyWith(
-            color: isSelected ? Colors.white : AppColors.textTertiary,
           ),
         ),
       ),
@@ -591,63 +551,223 @@ class _TimeSlotsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final slots = controller.availableSlots;
+      final selectedDate = controller.isMonthlySelection
+          ? controller.selectedMonthlyDate.value
+          : controller.selectedDate.value;
 
-      if (slots.isEmpty) {
-        return _emptyState('No available slots for this date.');
+      if (selectedDate == null) {
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: 22.h, horizontal: 16.w),
+          decoration: BoxDecoration(
+            color: AppColors.bgSecondary,
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(color: AppColors.borderPrimary),
+          ),
+          child: Text(
+            'Select a date to see available times.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.sm14Medium.copyWith(
+              color: AppColors.textSecondary,
+              letterSpacing: 0,
+            ),
+          ),
+        );
       }
 
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: 10.h,
-          crossAxisSpacing: 10.w,
-          childAspectRatio: 2.2,
-        ),
-        itemCount: slots.length,
-        itemBuilder: (_, index) {
-          final time = slots[index];
-          final isSelected = controller.filteredSlots[index].id ==
-              controller.selectedSlot?.id;
-              
-          return GestureDetector(
-            onTap: () => controller.setTimeSlot(index),
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.actionSecondary
-                    : AppColors.bgTertiary,
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              child: Text(
-                time,
-                style: AppTextStyles.xs12Medium.copyWith(
-                  color: isSelected ? Colors.white : AppColors.textPrimary,
-                ),
+      final formattedDate = DateFormat('MMMM dd').format(selectedDate);
+
+      // Get ALL slots for the date
+      final slots = controller.selectedClassSlots.where((slot) {
+        final d = DateTime.tryParse(slot.date);
+        return d != null &&
+            d.year == selectedDate.year &&
+            d.month == selectedDate.month &&
+            d.day == selectedDate.day &&
+            slot.isBookable;
+      }).toList();
+
+      if (slots.isEmpty) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Time for $formattedDate',
+              style: AppTextStyles.sm14SemiBold.copyWith(
+                color: AppColors.textPrimary,
+                letterSpacing: 0,
               ),
             ),
-          );
-        },
+            SizedBox(height: 12.h),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: 32.h, horizontal: 16.w),
+              decoration: BoxDecoration(
+                color: AppColors.bgSecondary,
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: AppColors.borderPrimary),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.event_busy_outlined,
+                    color: AppColors.textTertiary,
+                    size: 32.sp,
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'No slots available for this date.',
+                    style: AppTextStyles.sm14Medium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    'Try picking another day from the calendar.',
+                    style: AppTextStyles.xs12Regular.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Select Time for $formattedDate',
+            style: AppTextStyles.sm14SemiBold.copyWith(
+              color: AppColors.textPrimary,
+              letterSpacing: 0,
+            ),
+          ),
+          SizedBox(height: 12.h),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10.h,
+              crossAxisSpacing: 10.w,
+              childAspectRatio: 3.2,
+            ),
+            itemCount: slots.length,
+            itemBuilder: (_, index) {
+              final slot = slots[index];
+              final isSelected = controller.selectedSlotIds.contains(slot.id);
+
+              return GestureDetector(
+                onTap: () => controller.selectSlot(slot),
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.black : AppColors.bgSecondary,
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.black
+                          : AppColors.borderPrimary,
+                    ),
+                  ),
+                  child: Text(
+                    _slotLabel(slot),
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.xs12SemiBold.copyWith(
+                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       );
     });
   }
 
-  Widget _emptyState(String message) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16.r),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.bgTertiary,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Text(
-        message,
-        style: AppTextStyles.xs12Medium.copyWith(color: AppColors.textSecondary),
-      ),
-    );
+  String _slotLabel(dynamic slot) {
+    final endTime = slot.displayEndTime?.toString() ?? '';
+    if (endTime.isEmpty) return slot.displayTime;
+    return '${slot.displayTime} - $endTime';
+  }
+}
+
+class _SelectedMonthlySlots extends StatelessWidget {
+  final BookTrainerController controller;
+
+  const _SelectedMonthlySlots({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final slots = controller.selectedSlots;
+      if (slots.isEmpty) return const SizedBox.shrink();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Selected Times',
+            style: AppTextStyles.sm14SemiBold.copyWith(
+              color: AppColors.textPrimary,
+              letterSpacing: 0,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children: slots.map((slot) {
+              return GestureDetector(
+                onTap: () => controller.selectSlot(slot),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 8.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 14.sp,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 6.w),
+                      Text(
+                        '${_slotDateLabel(slot.date)} • ${_slotLabel(slot)}',
+                        style: AppTextStyles.xs12SemiBold.copyWith(
+                          color: Colors.white,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      );
+    });
+  }
+
+  String _slotLabel(dynamic slot) {
+    final endTime = slot.displayEndTime?.toString() ?? '';
+    if (endTime.isEmpty) return slot.displayTime;
+    return '${slot.displayTime} - $endTime';
+  }
+
+  String _slotDateLabel(String date) {
+    final parsed = DateTime.tryParse(date);
+    if (parsed == null) return date;
+    return DateFormat('MMM d').format(parsed);
   }
 }

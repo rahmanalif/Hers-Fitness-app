@@ -837,6 +837,7 @@ class _AvailabilityClassCard extends StatefulWidget {
 
 class _AvailabilityClassCardState extends State<_AvailabilityClassCard> {
   bool _isExpanded = false;
+  bool _showAllDates = false;
 
   @override
   Widget build(BuildContext context) {
@@ -982,30 +983,108 @@ class _AvailabilityClassCardState extends State<_AvailabilityClassCard> {
                 style: AppTextStyles.xs12SemiBold.copyWith(color: AppColors.textPrimary),
               ),
               SizedBox(height: 8.h),
-              Wrap(
-                spacing: 8.w,
-                runSpacing: 8.h,
-                children: slots.map((slot) {
-                  final slotTime = slot['time']?.toString() ?? '';
-                  return Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgSecondary,
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(color: AppColors.borderPrimary),
-                    ),
-                    child: Text(
-                      slotTime,
-                      style: AppTextStyles.xs12Medium.copyWith(color: AppColors.textSecondary),
-                    ),
-                  );
-                }).toList(),
-              ),
+              Builder(builder: (context) {
+                final grouped = _groupSlotsByDate(slots);
+                final showSeeMore = grouped.length > 3;
+                final displayedGroups = _showAllDates ? grouped : grouped.take(3).toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...displayedGroups.map((group) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 8.h),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: AppColors.actionPrimary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6.r),
+                              ),
+                              child: Text(
+                                group['date']!,
+                                style: AppTextStyles.xs12SemiBold.copyWith(
+                                  color: AppColors.actionPrimary,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(top: 4.h),
+                                child: Text(
+                                  "${group['range']} available",
+                                  style: AppTextStyles.xs12Medium.copyWith(
+                                    color: AppColors.textSecondary,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    if (showSeeMore)
+                      GestureDetector(
+                        onTap: () => setState(() => _showAllDates = !_showAllDates),
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 4.h),
+                          child: Row(
+                            children: [
+                              Text(
+                                _showAllDates ? "Show less" : "See ${grouped.length - 3} more dates",
+                                style: AppTextStyles.xs12SemiBold.copyWith(
+                                  color: AppColors.actionPrimary,
+                                ),
+                              ),
+                              Icon(
+                                _showAllDates ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                size: 16.sp,
+                                color: AppColors.actionPrimary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
             ],
           ],
         ),
       ),
     );
+  }
+
+  List<Map<String, dynamic>> _groupSlotsByDate(List<Map<String, dynamic>> slots) {
+    final Map<String, List<String>> grouped = {};
+
+    for (var slot in slots) {
+      final date = slot['date']?.toString() ?? 'N/A';
+      final time = slot['time']?.toString() ?? '';
+      if (time.isNotEmpty) {
+        grouped.putIfAbsent(date, () => []).add(time);
+      }
+    }
+
+    return grouped.entries.map((e) {
+      final times = e.value;
+      String rangeText = "";
+      if (times.isNotEmpty) {
+        // Assuming times are sequential, take first start and last end
+        final firstStart = times.first.split('-').first.trim();
+        final lastEnd = times.last.split('-').last.trim();
+        rangeText = "$firstStart - $lastEnd";
+      }
+      return {
+        'date': e.key,
+        'times': times,
+        'range': rangeText,
+      };
+    }).toList();
   }
 
   String _formatDeliveryType(String type) {

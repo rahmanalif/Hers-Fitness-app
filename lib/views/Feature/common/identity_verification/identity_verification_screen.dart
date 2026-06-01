@@ -19,6 +19,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:fitness/utils/app_snackbar.dart';
+import 'package:image_picker/image_picker.dart';
 
 enum IdentityCardSide { front, back }
 
@@ -31,6 +32,8 @@ class VerifyIdentityScreen extends StatefulWidget {
 
 class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
   String? selectedDocument;
+  String? frontImagePath;
+  String? backImagePath;
   final TextEditingController idCardNumberController = TextEditingController();
   late final String role;
   late final Map<String, String>? trainerRegisterDraft;
@@ -53,24 +56,119 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
     super.dispose();
   }
 
-  Future<void> _selectDocument() async {
-    final result = await Get.toNamed(AppRoutes.identityDocumentTypeScreen);
-    if (result is String && mounted) {
-      setState(() => selectedDocument = result);
+  void _showDocumentSelection() {
+    Get.bottomSheet(
+      const IdentityDocumentTypeScreen(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    ).then((result) {
+      if (result is String && mounted) {
+        setState(() => selectedDocument = result);
+      }
+    });
+  }
+
+  Future<void> _pickImage(IdentityCardSide side) async {
+    await Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.symmetric(vertical: 20.h),
+        decoration: BoxDecoration(
+          color: AppColors.bgPrimary,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24.r),
+            topRight: Radius.circular(24.r),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppText(
+              "Select Source",
+              style: AppTextStyles.base16SemiBold.copyWith(color: AppColors.textPrimary),
+            ),
+            SizedBox(height: 20.h),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.actionPrimary),
+              title: const AppText("Take a Photo"),
+              onTap: () {
+                Get.back();
+                _captureFromCamera(side);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.actionPrimary),
+              title: const AppText("Choose from Gallery"),
+              onTap: () {
+                Get.back();
+                _pickFromGallery(side);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFromGallery(IdentityCardSide side) async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (image != null && mounted) {
+      setState(() {
+        if (side == IdentityCardSide.front) {
+          frontImagePath = image.path;
+        } else {
+          backImagePath = image.path;
+        }
+      });
     }
   }
 
-  void _startVerification() {
-    final idCardNumber = idCardNumberController.text.trim();
-    if (selectedDocument == null || idCardNumber.isEmpty) return;
-
+  void _captureFromCamera(IdentityCardSide side) {
     Get.toNamed(
       AppRoutes.identityCameraScreen,
       arguments: _identityArgs(
         role,
-        IdentityCardSide.front,
+        side,
+        documentType: selectedDocument,
+        idCardNumber: idCardNumberController.text.trim(),
+        frontImagePath: frontImagePath,
+        backImagePath: backImagePath,
+        trainerRegisterDraft: trainerRegisterDraft,
+        memberRegisterDraft: memberRegisterDraft,
+      ),
+    )?.then((result) {
+      if (result is String && mounted) {
+        setState(() {
+          if (side == IdentityCardSide.front) {
+            frontImagePath = result;
+          } else {
+            backImagePath = result;
+          }
+        });
+      }
+    });
+  }
+
+  void _submit() {
+    final idCardNumber = idCardNumberController.text.trim();
+    if (selectedDocument == null || idCardNumber.isEmpty || frontImagePath == null || backImagePath == null) {
+      showAppSnackbar(
+        "Incomplete Information",
+        "Please select a document, enter the ID number, and provide both front and back photos.",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    Get.toNamed(
+      AppRoutes.identityReviewScreen,
+      arguments: _identityArgs(
+        role,
+        IdentityCardSide.back, // review screen expects back for some reason in existing code
         documentType: selectedDocument,
         idCardNumber: idCardNumber,
+        frontImagePath: frontImagePath,
+        backImagePath: backImagePath,
         trainerRegisterDraft: trainerRegisterDraft,
         memberRegisterDraft: memberRegisterDraft,
       ),
@@ -81,7 +179,9 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
   Widget build(BuildContext context) {
     final hasSelection =
         selectedDocument != null &&
-        idCardNumberController.text.trim().isNotEmpty;
+        idCardNumberController.text.trim().isNotEmpty &&
+        frontImagePath != null &&
+        backImagePath != null;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom + 24.h;
 
     return Scaffold(
@@ -98,9 +198,31 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
                   SizedBox(height: 20.h),
                   _GovernmentIdCard(
                     selectedLabel: selectedDocument,
-                    onSelect: _selectDocument,
+                    onSelect: _showDocumentSelection,
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: 24.h),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _IdImageSlot(
+                          label: "Front Side",
+                          imagePath: frontImagePath,
+                          onTap: () => _pickImage(IdentityCardSide.front),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: _IdImageSlot(
+                          label: "Back Side",
+                          imagePath: backImagePath,
+                          onTap: () => _pickImage(IdentityCardSide.back),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 24.h),
                   CustomTextField(
                     hintText: 'Enter ID card number',
                     controller: idCardNumberController,
@@ -112,11 +234,59 @@ class _VerifyIdentityScreenState extends State<VerifyIdentityScreen> {
                   _PrimaryOrDisabledButton(
                     text: 'Verify my identity',
                     enabled: hasSelection,
-                    onTap: _startVerification,
+                    onTap: _submit,
                   ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IdImageSlot extends StatelessWidget {
+  final String label;
+  final String? imagePath;
+  final VoidCallback onTap;
+
+  const _IdImageSlot({
+    required this.label,
+    required this.imagePath,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppText(
+            label,
+            style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textPrimary),
+          ),
+          SizedBox(height: 8.h),
+          Container(
+            height: 120.h,
+            decoration: BoxDecoration(
+              color: AppColors.bgSecondary,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: AppColors.borderPrimary),
+              image: imagePath != null
+                  ? DecorationImage(
+                      image: FileImage(File(imagePath!)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: imagePath == null
+                ? const Center(
+                    child: Icon(Icons.add_a_photo_outlined, color: AppColors.actionPrimary),
+                  )
+                : null,
           ),
         ],
       ),
@@ -129,72 +299,65 @@ class IdentityDocumentTypeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF3F3F3F),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: Container(
-          width: double.infinity,
-          height: 396.h,
-          margin: EdgeInsets.only(top: 6.h),
-          padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 26.h),
-          decoration: BoxDecoration(
-            color: AppColors.bgPrimary,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(46.r),
-              topRight: Radius.circular(46.r),
+    return Container(
+      width: double.infinity,
+      height: 396.h,
+      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 26.h),
+      decoration: BoxDecoration(
+        color: AppColors.bgPrimary,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(46.r),
+          topRight: Radius.circular(46.r),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 150.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: AppColors.actionSecondary,
+                borderRadius: BorderRadius.circular(20.r),
+              ),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 150.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: AppColors.actionSecondary,
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                ),
-              ),
-              SizedBox(height: 34.h),
-              AppText(
-                "Let's get you verified!",
-                style: AppTextStyles.base16SemiBold.copyWith(
-                  color: AppColors.textPrimary,
-                  letterSpacing: 0,
-                ),
-              ),
-              SizedBox(height: 8.h),
-              AppText(
-                'Which Photo ID would you Like to use?',
-                style: AppTextStyles.xs12Regular.copyWith(
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0,
-                ),
-              ),
-              SizedBox(height: 24.h),
-              _DocumentOptionTile(
-                title: "Driver's License",
-                onTap: () => Get.back(result: "Driver's License"),
-              ),
-              _DividerLine(margin: EdgeInsets.symmetric(horizontal: 8.w)),
-              _DocumentOptionTile(
-                title: 'National ID Card',
-                selected: true,
-                onTap: () => Get.back(result: 'National ID Card'),
-              ),
-              _DividerLine(margin: EdgeInsets.symmetric(horizontal: 8.w)),
-              _DocumentOptionTile(
-                title: 'Passport',
-                onTap: () => Get.back(result: 'Passport'),
-              ),
-              const Spacer(),
-              _DividerLine(margin: EdgeInsets.symmetric(horizontal: 8.w)),
-            ],
+          SizedBox(height: 34.h),
+          AppText(
+            "Let's get you verified!",
+            style: AppTextStyles.base16SemiBold.copyWith(
+              color: AppColors.textPrimary,
+              letterSpacing: 0,
+            ),
           ),
-        ),
+          SizedBox(height: 8.h),
+          AppText(
+            'Which Photo ID would you Like to use?',
+            style: AppTextStyles.xs12Regular.copyWith(
+              color: AppColors.textSecondary,
+              letterSpacing: 0,
+            ),
+          ),
+          SizedBox(height: 24.h),
+          _DocumentOptionTile(
+            title: "Driver's License",
+            onTap: () => Get.back(result: "Driver's License"),
+          ),
+          _DividerLine(margin: EdgeInsets.symmetric(horizontal: 8.w)),
+          _DocumentOptionTile(
+            title: 'National ID Card',
+            selected: true,
+            onTap: () => Get.back(result: 'National ID Card'),
+          ),
+          _DividerLine(margin: EdgeInsets.symmetric(horizontal: 8.w)),
+          _DocumentOptionTile(
+            title: 'Passport',
+            onTap: () => Get.back(result: 'Passport'),
+          ),
+          const Spacer(),
+          _DividerLine(margin: EdgeInsets.symmetric(horizontal: 8.w)),
+        ],
       ),
     );
   }
@@ -517,51 +680,12 @@ class IdentityCheckQualityScreen extends StatelessWidget {
       return;
     }
 
-    if (side == IdentityCardSide.front) {
-      Get.toNamed(
-        AppRoutes.identityCameraScreen,
-        arguments: _identityArgs(
-          role,
-          IdentityCardSide.back,
-          documentType: documentType,
-          idCardNumber: idCardNumber,
-          frontImagePath: currentImagePath,
-          trainerRegisterDraft: trainerRegisterDraft,
-          memberRegisterDraft: memberRegisterDraft,
-        ),
-      );
-      return;
-    }
-
-    Get.toNamed(
-      AppRoutes.identityReviewScreen,
-      arguments: _identityArgs(
-        role,
-        IdentityCardSide.back,
-        documentType: documentType,
-        idCardNumber: idCardNumber,
-        frontImagePath: frontImagePath,
-        backImagePath: currentImagePath,
-        trainerRegisterDraft: trainerRegisterDraft,
-        memberRegisterDraft: memberRegisterDraft,
-      ),
-    );
+    // Return the result to the previous screen (VerifyIdentityScreen)
+    Get.back(result: currentImagePath);
   }
 
   void _retakePhoto() {
-    Get.offNamed(
-      AppRoutes.identityCameraScreen,
-      arguments: _identityArgs(
-        role,
-        side,
-        documentType: documentType,
-        idCardNumber: idCardNumber,
-        frontImagePath: frontImagePath,
-        backImagePath: backImagePath,
-        trainerRegisterDraft: trainerRegisterDraft,
-        memberRegisterDraft: memberRegisterDraft,
-      ),
-    );
+    Get.back(); // Go back to camera
   }
 
   @override
@@ -707,6 +831,7 @@ class IdentityReviewScreen extends StatelessWidget {
             phoneNumber: trainerDraft['phoneNumber'] ?? '',
             state: trainerDraft['state'] ?? '',
             location: trainerDraft['location'] ?? '',
+            timezone: trainerDraft['timezone'],
             idCardType: _backendIdCardType(documentType),
             idCardNumber: cardNumber,
             bio: trainerDraft['bio'] ?? '',
@@ -748,6 +873,7 @@ class IdentityReviewScreen extends StatelessWidget {
             phoneNumber: memberDraft['phoneNumber'] ?? '',
             state: memberDraft['state'] ?? '',
             location: memberDraft['location'] ?? '',
+            timezone: memberDraft['timezone'],
             idCardType: _backendIdCardType(documentType),
             idCardNumber: cardNumber,
             password: memberDraft['password'] ?? '',

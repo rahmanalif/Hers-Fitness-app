@@ -27,6 +27,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _currentObscure = true;
   bool _newObscure = true;
   bool _confirmObscure = true;
+  int strengthLevel = 0;
 
   @override
   void initState() {
@@ -34,14 +35,70 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     _profileController = Get.isRegistered<TrainerProfileController>()
         ? Get.find<TrainerProfileController>()
         : Get.put(TrainerProfileController());
+    
+    _newPasswordController.addListener(_checkPasswordStrength);
   }
 
   @override
   void dispose() {
     _currentPasswordController.dispose();
+    _newPasswordController.removeListener(_checkPasswordStrength);
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _checkPasswordStrength() {
+    String text = _newPasswordController.text;
+    setState(() {
+      if (text.isEmpty) {
+        strengthLevel = 0;
+      } else if (text.length <= 3) {
+        strengthLevel = 1;
+      } else if (text.length <= 6) {
+        strengthLevel = 2;
+      } else if (text.length <= 8) {
+        strengthLevel = 3;
+      } else {
+        strengthLevel = 4;
+      }
+    });
+  }
+
+  String getStrengthText() {
+    switch (strengthLevel) {
+      case 1:
+        return "Weak password! Let's add more strength!";
+      case 2:
+        return "Good password! Try a mix of characters!";
+      case 3:
+      case 4:
+        return "Amazing strength! Let's continue!";
+      default:
+        return "";
+    }
+  }
+
+  Color getStrengthColor(int level) {
+    if (strengthLevel == 0) return Colors.grey.shade200;
+    if (strengthLevel == 1) return const Color(0xFFFA3A59); // Red
+    if (strengthLevel == 2) return Colors.orange; // Yellow/Orange
+    if (strengthLevel >= 3) return const Color(0xFF5BA71B); // Green
+    return Colors.grey.shade200;
+  }
+
+  Widget _buildBar(int barIndex) {
+    bool isActive = strengthLevel >= barIndex;
+    return Expanded(
+      child: Container(
+        height: 4.h,
+        margin: EdgeInsets.only(right: barIndex == 4 ? 0 : 8.w),
+        decoration: BoxDecoration(
+          color: isActive ? getStrengthColor(barIndex) : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10.r),
+        ),
+      ),
+    );
   }
 
   Future<void> _submitChangePassword() async {
@@ -156,13 +213,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   SizedBox(height: 12.h),
 
                   _buildPasswordStrength(),
-                  SizedBox(height: 12.h),
-                  AppText(
-                    "Weak password! Let’s add more strength!",
-                    style: AppTextStyles.sm14Regular.copyWith(
-                      color: Colors.grey,
+                  if (strengthLevel > 0) ...[
+                    SizedBox(height: 12.h),
+                    AppText(
+                      getStrengthText(),
+                      style: AppTextStyles.sm14Regular.copyWith(
+                        color: Colors.grey,
+                      ),
                     ),
-                  ),
+                  ],
 
                   SizedBox(height: 40.h),
                   Obx(
@@ -251,20 +310,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   Widget _buildPasswordStrength() {
     return Row(
-      children: List.generate(4, (index) {
-        return Expanded(
-          child: Container(
-            height: 4.h,
-            margin: EdgeInsets.only(right: index == 3 ? 0 : 8.w),
-            decoration: BoxDecoration(
-              color: index == 0
-                  ? AppColors.actionPrimary
-                  : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-          ),
-        );
-      }),
+      children: [
+        _buildBar(1),
+        _buildBar(2),
+        _buildBar(3),
+        _buildBar(4),
+      ],
     );
   }
 }

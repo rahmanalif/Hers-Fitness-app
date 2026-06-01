@@ -6,6 +6,7 @@ class MemberRegisterPayload {
   final String phoneNumber;
   final String state;
   final String location;
+  final String? timezone;
   final String idCardType;
   final String idCardNumber;
   final String password;
@@ -20,6 +21,7 @@ class MemberRegisterPayload {
     required this.phoneNumber,
     required this.state,
     required this.location,
+    this.timezone,
     required this.idCardType,
     required this.idCardNumber,
     required this.password,
@@ -36,6 +38,7 @@ class MemberRegisterPayload {
       'phoneNumber': phoneNumber,
       'state': state,
       'location': location,
+      if (timezone != null && timezone!.isNotEmpty) 'timezone': timezone!,
       'idCardType': idCardType,
       'idCardNumber': idCardNumber,
       'password': password,

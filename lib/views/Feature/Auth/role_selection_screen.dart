@@ -24,13 +24,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       backgroundColor: AppColors.bgPrimary,
       body: Stack(
         children: [
-
           Container(
             width: double.infinity,
             height: double.infinity,
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment(1.0, -1.0),
+                center: const Alignment(1.0, -1.0),
                 radius: 2.5,
                 colors: [
                   const Color(0xFFFFA6B4).withValues(alpha: 0.5),
@@ -41,52 +40,43 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
             ),
           ),
-
           SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 100),
-                Center(
-                  child: AppText(
-                    'Are you a Member or\nTrainer?',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.twoXL24Medium.copyWith(
-                      color: AppColors.textPrimary,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Column(
+                children: [
+                  const SizedBox(height: 60),
+                  Center(
+                    child: AppText(
+                      'Are you a Member or\nTrainer?',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.twoXL24Medium.copyWith(
+                        color: AppColors.textPrimary,
+                        height: 1.2,
+                        fontSize: 24,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(height: MediaQuery.of(context).size.height * 0.04),
-                
-                // Role Cards
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildRoleCard(
-                          title: 'Member',
-                          image: 'assets/images/memberImg.png',
-                          isSelected: selectedRole == 'Member',
-                          onTap: () => setState(() => selectedRole = 'Member'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildRoleCard(
-                          title: 'Trainer',
-                          image: 'assets/images/trainerImg.png',
-                          isSelected: selectedRole == 'Trainer',
-                          onTap: () => setState(() => selectedRole = 'Trainer'),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 40),
+                  
+                  // Role Cards
+                  _buildRoleCard(
+                    title: 'Member',
+                    image: 'assets/images/member.png',
+                    isSelected: selectedRole == 'Member',
+                    onTap: () => setState(() => selectedRole = 'Member'),
                   ),
-                ),
-                SizedBox(height: MediaQuery.of(context).size.height * 0.05),
+                  SizedBox(height: 16.h),
+                  _buildRoleCard(
+                    title: 'Trainer',
+                    image: 'assets/images/trainer.png',
+                    isSelected: selectedRole == 'Trainer',
+                    onTap: () => setState(() => selectedRole = 'Trainer'),
+                  ),
+                  
+                  SizedBox(height: 32.h),
 
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: AppButton(
+                  AppButton(
                     text: "Continue", 
                     onTap: () {
                       if (selectedRole == 'Member') {
@@ -97,8 +87,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     }, 
                     showArrow: true
                   ),
-                ),
-              ],
+                  SizedBox(height: 40.h),
+                ],
+              ),
             ),
           ),
         ],
@@ -115,78 +106,82 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 350.h,
+        height: 160.h,
+        width: double.infinity,
         decoration: BoxDecoration(
-          color: AppColors.bgPrimary,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(32),
           border: isSelected
-              ? Border.all(color: AppColors.actionPrimary, width: 1.5)
-              : Border.all(color: Colors.transparent),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0xFFF7869A).withValues(alpha: 0.15),
-              blurRadius: 12,
-              offset: Offset(0, 6),
-            ),
-          ],
+              ? Border.all(color: AppColors.actionPrimary, width: 1)
+              : Border.all(color: Colors.transparent, width: 1),
         ),
-        child: Stack(
-          children: [
-            // Selection Indicator
-            Positioned(
-              top: 16,
-              left: 16,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? AppColors.actionPrimary : AppColors.iconDisabled,
-                    width: 2,
-                  ),
-                ),
-                child: isSelected
-                    ? Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.actionPrimary,
-                        ),
-                      )
-                    : const SizedBox(width: 10, height: 10),
-              ),
-            ),
-            
-            // Image
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(31),
+          child: Stack(
+            children: [
+              // Background Image
+              Positioned.fill(
                 child: Image.asset(
                   image,
-                  fit: BoxFit.contain,
+                  fit: BoxFit.cover,
                 ),
               ),
-            ),
-            
-            // Label
-            Positioned(
-              top: 15,
-              left: 45,
-              child: AppText(
-                title,
-                style: AppTextStyles.base16Medium.copyWith(
-                  color: AppColors.textPrimary,
+              // Gradient Overlay
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.4),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+              // Selection Indicator and Label
+              Positioned(
+                bottom: 20.h,
+                left: 20.w,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 18.w,
+                      height: 18.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 2,
+                        ),
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 9.w,
+                                height: 9.w,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 12.w),
+                    AppText(
+                      title,
+                      style: AppTextStyles.base16Medium.copyWith(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:fitness/Helpers/route.dart';
+import 'package:fitness/utils/AppConstants/app_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fitness/utils/app_snackbar.dart';
@@ -20,10 +21,68 @@ class TrainerRegisterController extends GetxController {
   final confirmPasswordController = TextEditingController();
 
   final isLoading = false.obs;
+  final isFormValid = false.obs;
   final imagePath = RxnString();
+
+  final classesTaughtTags = <String>[].obs;
+  final certificationsTags = <String>[].obs;
+
+  static const _passwordPolicyMessage =
+      'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
+
+  @override
+  void onInit() {
+    super.onInit();
+    for (final controller in _watchedControllers) {
+      controller.addListener(_updateFormValidity);
+    }
+    imagePath.listen((_) => _updateFormValidity());
+    classesTaughtTags.listen((_) => _updateFormValidity());
+    certificationsTags.listen((_) => _updateFormValidity());
+    _updateFormValidity();
+  }
+
+  List<TextEditingController> get _watchedControllers => [
+    nameController,
+    emailController,
+    phoneController,
+    stateController,
+    locationController,
+    bioController,
+    instructorExperienceController,
+    classDeliveryModeController,
+    passwordController,
+    confirmPasswordController,
+  ];
 
   void setProfileImage(File file) {
     imagePath.value = file.path;
+  }
+
+  void addClassTag(String tag) {
+    if (tag.trim().isNotEmpty && !classesTaughtTags.contains(tag.trim())) {
+      classesTaughtTags.add(tag.trim());
+      classesTaughtController.clear();
+      _updateFormValidity();
+    }
+  }
+
+  void removeClassTag(String tag) {
+    classesTaughtTags.remove(tag);
+    _updateFormValidity();
+  }
+
+  void addCertificationTag(String tag) {
+    if (tag.trim().isNotEmpty && !certificationsTags.contains(tag.trim())) {
+      certificationsTags.add(tag.trim());
+      certificationsController.clear();
+      _updateFormValidity();
+    }
+  }
+
+  void removeCertificationTag(String tag) {
+    certificationsTags.remove(tag);
+    _updateFormValidity();
   }
 
   void continueToIdentityVerification() {
@@ -59,10 +118,11 @@ class TrainerRegisterController extends GetxController {
       'phoneNumber': phoneController.text.trim(),
       'state': stateController.text.trim(),
       'location': locationController.text.trim(),
+      'timezone': DateTime.now().timeZoneName,
       'bio': bioController.text.trim(),
-      'classesTaught': classesTaughtController.text.trim(),
+      'classesTaught': classesTaughtTags.join('|'),
       'instructorExperience': instructorExperienceController.text.trim(),
-      'certifications': certificationsController.text.trim(),
+      'certifications': certificationsTags.join('|'),
       'classDeliveryMode': _normalizedDeliveryMode,
       'password': passwordController.text,
       'confirmPassword': confirmPasswordController.text,
@@ -88,9 +148,7 @@ class TrainerRegisterController extends GetxController {
       'state': stateController.text,
       'location': locationController.text,
       'bio': bioController.text,
-      'classes taught': classesTaughtController.text,
       'experience': instructorExperienceController.text,
-      'certifications': certificationsController.text,
       'class delivery mode': classDeliveryModeController.text,
       'password': passwordController.text,
       'confirm password': confirmPasswordController.text,
@@ -100,6 +158,22 @@ class TrainerRegisterController extends GetxController {
       if (entry.value.trim().isEmpty) {
         return 'Please enter ${entry.key}.';
       }
+    }
+
+    if (!AppConstants.emailValidator.hasMatch(emailController.text.trim())) {
+      return 'Please enter a valid email address.';
+    }
+
+    if (classesTaughtTags.isEmpty) {
+      return 'Please enter at least one fitness class you teach.';
+    }
+
+    if (certificationsTags.isEmpty) {
+      return 'Please enter at least one certification/qualification.';
+    }
+
+    if (!AppConstants.passwordValidator.hasMatch(passwordController.text)) {
+      return _passwordPolicyMessage;
     }
 
     if (passwordController.text != confirmPasswordController.text) {
@@ -113,8 +187,30 @@ class TrainerRegisterController extends GetxController {
     return null;
   }
 
+  void _updateFormValidity() {
+    final isValid =
+        nameController.text.trim().isNotEmpty &&
+        AppConstants.emailValidator.hasMatch(emailController.text.trim()) &&
+        phoneController.text.trim().isNotEmpty &&
+        stateController.text.trim().isNotEmpty &&
+        locationController.text.trim().isNotEmpty &&
+        bioController.text.trim().isNotEmpty &&
+        classesTaughtTags.isNotEmpty &&
+        instructorExperienceController.text.trim().isNotEmpty &&
+        certificationsTags.isNotEmpty &&
+        classDeliveryModeController.text.trim().isNotEmpty &&
+        AppConstants.passwordValidator.hasMatch(passwordController.text) &&
+        passwordController.text == confirmPasswordController.text &&
+        imagePath.value != null;
+
+    isFormValid.value = isValid;
+  }
+
   @override
   void onClose() {
+    for (final controller in _watchedControllers) {
+      controller.removeListener(_updateFormValidity);
+    }
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();

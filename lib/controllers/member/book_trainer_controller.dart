@@ -35,6 +35,7 @@ class BookTrainerController extends GetxController {
   final selectedSlotIds = <String>{}.obs;
 
   final selectedDate = DateTime.now().obs;
+  final selectedMonthlyDate = Rxn<DateTime>();
   final focusedDate = DateTime.now().obs;
   final selectedTime = ''.obs;
   final selectedSlotIndex = 0.obs;
@@ -253,6 +254,7 @@ class BookTrainerController extends GetxController {
   void setClassType(String value) {
     selectedClassType.value = value;
     selectedClassIndex.value = 0;
+    selectedMonthlyDate.value = null;
     _selectFirstBookableSlot();
     bookingHold.value = null;
   }
@@ -261,6 +263,7 @@ class BookTrainerController extends GetxController {
     selectedClassIndex.value = index;
     selectedSessionIndex.value = 0;
     selectedSlotIndex.value = 0;
+    selectedMonthlyDate.value = null;
     _selectFirstBookableSlot();
     bookingHold.value = null;
   }
@@ -281,13 +284,14 @@ class BookTrainerController extends GetxController {
       return;
     }
 
+    var shouldAdvanceToNextDate = false;
     if (isMonthlySelection) {
-      if (selectedSlotIds.contains(slot.id)) {
-        selectedSlotIds.remove(slot.id);
-      } else {
+      final wasSelected = selectedSlotIds.contains(slot.id);
+      _removeSlotsForDate(slot.date);
+      if (!wasSelected) {
         selectedSlotIds.add(slot.id);
+        shouldAdvanceToNextDate = true;
       }
-      if (selectedSlotIds.isEmpty) selectedSlotIds.add(slot.id);
       selectedSlotIds.refresh();
     } else {
       selectedSlotIds
@@ -305,6 +309,9 @@ class BookTrainerController extends GetxController {
     selectedDate.value = DateTime.tryParse(slot.date) ?? selectedDate.value;
     focusedDate.value = selectedDate.value;
     selectedPeriod.value = _slotPeriod(slot.startTime);
+    if (shouldAdvanceToNextDate) {
+      _focusNextAvailableDate(after: DateTime.tryParse(slot.date));
+    }
     bookingHold.value = null;
   }
 
@@ -315,19 +322,35 @@ class BookTrainerController extends GetxController {
   }
 
   void selectDate(DateTime selectedDay, DateTime focusedDay) {
-    selectedDate.value = selectedDay;
-    focusedDate.value = focusedDay;
+    if (isMonthlySelection) {
+      selectedDate.value = selectedDay;
+      selectedMonthlyDate.value = selectedDay;
+      focusedDate.value = focusedDay;
 
-    final slotsForDate = selectedClassSlots
-        .where((slot) => _sameDate(slot.date, selectedDay) && slot.isBookable)
-        .toList();
-    if (slotsForDate.isEmpty) return;
+      if (hasSelectedSlot(selectedDay)) {
+        final slotsForDate = selectedClassSlots
+            .where((slot) => _sameDate(slot.date, selectedDay))
+            .toList();
+        for (var s in slotsForDate) {
+          selectedSlotIds.remove(s.id);
+        }
+      }
+    } else {
+      selectedDate.value = selectedDay;
+      focusedDate.value = focusedDay;
 
-    final nextSlot = slotsForDate.firstWhere(
-      (slot) => _slotPeriod(slot.startTime) == selectedPeriod.value,
-      orElse: () => slotsForDate.first,
-    );
-    selectSlot(nextSlot);
+      final slotsForDate = selectedClassSlots
+          .where((slot) => _sameDate(slot.date, selectedDay) && slot.isBookable)
+          .toList();
+
+      selectedSlotIds.clear();
+      if (slotsForDate.isNotEmpty) {
+        selectedSlotIds.add(slotsForDate.first.id);
+      }
+    }
+
+    selectedSlotIds.refresh();
+    bookingHold.value = null;
   }
 
   void setPeriod(String value) {
@@ -349,6 +372,12 @@ class BookTrainerController extends GetxController {
   bool hasBookedSlot(DateTime day) {
     return selectedClassSlots.any(
       (slot) => _sameDate(slot.date, day) && !slot.isBookable,
+    );
+  }
+
+  bool hasSelectedSlot(DateTime day) {
+    return selectedClassSlots.any(
+      (slot) => selectedSlotIds.contains(slot.id) && _sameDate(slot.date, day),
     );
   }
 
@@ -765,7 +794,7 @@ class BookTrainerController extends GetxController {
     final slot = selectedClassSlots.firstWhereOrNull((item) => item.isBookable);
     selectedSlotIds.clear();
     if (slot != null) {
-      selectedSlotIds.add(slot.id);
+      if (!isMonthlySelection) selectedSlotIds.add(slot.id);
       selectedTime.value = slot.startTime;
       selectedDate.value = DateTime.tryParse(slot.date) ?? DateTime.now();
       focusedDate.value = selectedDate.value;
@@ -774,6 +803,41 @@ class BookTrainerController extends GetxController {
       selectedSlotIndex.value = selectedSessionIndex.value;
     }
     selectedSlotIds.refresh();
+  }
+
+  void _removeSlotsForDate(String date) {
+    for (final slot in selectedClassSlots.where((slot) => slot.date == date)) {
+      selectedSlotIds.remove(slot.id);
+    }
+  }
+
+  void _focusNextAvailableDate({DateTime? after}) {
+    if (after == null) return;
+
+    final selectedDateKeys = selectedSlots
+        .map((slot) => _dateKey(DateTime.tryParse(slot.date)))
+        .whereType<String>()
+        .toSet();
+
+    final nextSlot = selectedClassSlots.firstWhereOrNull((slot) {
+      if (!slot.isBookable) return false;
+      final date = DateTime.tryParse(slot.date);
+      if (date == null || !date.isAfter(after)) return false;
+      return !selectedDateKeys.contains(_dateKey(date));
+    });
+
+    if (nextSlot == null) return;
+    final nextDate = DateTime.tryParse(nextSlot.date);
+    if (nextDate == null) return;
+    selectedDate.value = nextDate;
+    selectedMonthlyDate.value = nextDate;
+    focusedDate.value = nextDate;
+    selectedPeriod.value = _slotPeriod(nextSlot.startTime);
+  }
+
+  String? _dateKey(DateTime? date) {
+    if (date == null) return null;
+    return '${date.year}-${date.month}-${date.day}';
   }
 
   bool _sameDate(String date, DateTime day) {

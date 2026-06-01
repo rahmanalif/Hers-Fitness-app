@@ -1,8 +1,7 @@
 class AppConstants {
   //-------------- base url set here ---------------------//
 
-  static const String BASE_URL =
-      "https://hersfitness.okaybro.online";
+  static const String BASE_URL = "https://hersfitness.okaybro.online";
 
   static const String APP_NAME = 'DefaultAppName';
   static const String Publishable_key = '';
@@ -21,6 +20,6 @@ class AppConstants {
   );
 
   static RegExp passwordValidator = RegExp(
-    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$",
+    r'^.*(?=.{8,})((?=.*[!@#$%^&*()\-_=+{};:,<.>]){1})(?=.*\d)((?=.*[a-z]){1})((?=.*[A-Z]){1}).*$',
   );
 }

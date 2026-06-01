@@ -699,8 +699,10 @@ class _CreateClassBottomSheetState extends State<CreateClassBottomSheet> {
                                 hint: "Select type",
                                 value: _selectedType,
                                 items: _classTypes,
-                                onChanged: (v) =>
-                                    setState(() => _selectedType = v),
+                                onChanged: (v) {
+                                  FocusScope.of(context).unfocus();
+                                  setState(() => _selectedType = v);
+                                },
                               ),
                             ],
                           ),
@@ -754,11 +756,14 @@ class _CreateClassBottomSheetState extends State<CreateClassBottomSheet> {
                       hint: "Choose format",
                       value: _selectedFormat,
                       items: _sessionFormats,
-                      onChanged: (v) => setState(() {
-                        _selectedFormat = v;
-                        // Reset capacity if switching away from group
-                        if (!_isGroupFormat) _capacityController.clear();
-                      }),
+                      onChanged: (v) {
+                        FocusScope.of(context).unfocus();
+                        setState(() {
+                          _selectedFormat = v;
+                          // Reset capacity if switching away from group
+                          if (!_isGroupFormat) _capacityController.clear();
+                        });
+                      },
                     ),
                     SizedBox(height: 16.h),
 

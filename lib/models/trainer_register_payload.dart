@@ -6,6 +6,7 @@ class TrainerRegisterPayload {
   final String phoneNumber;
   final String state;
   final String location;
+  final String? timezone;
   final String idCardType;
   final String idCardNumber;
   final String bio;
@@ -25,6 +26,7 @@ class TrainerRegisterPayload {
     required this.phoneNumber,
     required this.state,
     required this.location,
+    this.timezone,
     required this.idCardType,
     required this.idCardNumber,
     required this.bio,
@@ -46,6 +48,7 @@ class TrainerRegisterPayload {
       'phoneNumber': phoneNumber,
       'state': state,
       'location': location,
+      if (timezone != null && timezone!.isNotEmpty) 'timezone': timezone!,
       'idCardType': idCardType,
       'idCardNumber': idCardNumber,
       'bio': bio,
