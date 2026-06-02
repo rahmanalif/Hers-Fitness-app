@@ -71,7 +71,7 @@ class _TrainerBottomNavScreenState extends State<TrainerBottomNavScreen> {
       floatingActionButton: FloatingActionButton(
         elevation: 0,
         backgroundColor: AppColors.actionPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: const CircleBorder(),
         onPressed: () => _onItemTapped(2),
         child: const Icon(Icons.event_available, color: Colors.white, size: 28),
       ),

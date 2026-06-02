@@ -77,9 +77,7 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
       floatingActionButton: FloatingActionButton(
         elevation: 0,
         backgroundColor: AppColors.actionPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-        ),
+        shape: const CircleBorder(),
         onPressed: () => _onItemTapped(2),
         child: SvgPicture.string(
           selectedIndex == 2 ? _calendarFilledSvg : _calendarOutlineSvg,
