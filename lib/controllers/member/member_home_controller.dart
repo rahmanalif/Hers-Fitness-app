@@ -33,6 +33,22 @@ class MemberHomeController extends GetxController {
     "Cardio",
   ];
 
+  final List<String> workoutImages = [
+    "assets/images/workout.png",
+    "assets/images/workout (1).png",
+    "assets/images/workout (2).png",
+    "assets/images/workout (3).png",
+    "assets/images/workout (4).png",
+  ];
+
+  final currentWorkoutImage = "assets/images/workout.png".obs;
+
+  void updateWorkoutImage() {
+    final nextIndex = (workoutImages.indexOf(currentWorkoutImage.value) + 1) %
+        workoutImages.length;
+    currentWorkoutImage.value = workoutImages[nextIndex];
+  }
+
   final trainers = <Map<String, dynamic>>[].obs;
   final isLoadingTrainers = false.obs;
   final nextWorkoutItems = <MemberNextWorkoutModel>[].obs;
@@ -80,6 +96,8 @@ class MemberHomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final random = DateTime.now().millisecondsSinceEpoch;
+    currentWorkoutImage.value = workoutImages[random % workoutImages.length];
     _startBannerTimer();
     fetchNextWorkouts();
     fetchHomeLocationAndTrainers();

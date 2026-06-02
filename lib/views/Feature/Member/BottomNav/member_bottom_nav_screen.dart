@@ -1,5 +1,7 @@
 import 'package:fitness/views/Feature/Member/Trainer/trainer_list_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:fitness/controllers/member/member_home_controller.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fitness/views/Feature/Member/Home/member_home_screen.dart';
 import 'package:fitness/views/Feature/Member/MyClasses/my_classes_screen.dart';
@@ -47,6 +49,11 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
   }
 
   void _onItemTapped(int index) {
+    if (index == 0 && selectedIndex != 0) {
+      if (Get.isRegistered<MemberHomeController>()) {
+        Get.find<MemberHomeController>().updateWorkoutImage();
+      }
+    }
     setState(() {
       selectedIndex = index;
     });

@@ -40,6 +40,7 @@ class TrainerListScreen extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: CustomAppbar(
                     title: "Trainer",
+                    showBack: false,
                     onTap: () => Get.offAllNamed(AppRoutes.memberBottomNavScreen),
                     trailing: _buildHeaderBookmarkButton(),
                   ),

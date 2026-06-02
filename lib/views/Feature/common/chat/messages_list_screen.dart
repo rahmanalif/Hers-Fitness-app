@@ -66,6 +66,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 16.w),
                     child: CustomAppbar(
                       title: "Messages",
+                      showBack: false,
                       onTap: _goHome,
                     ),
                   ),

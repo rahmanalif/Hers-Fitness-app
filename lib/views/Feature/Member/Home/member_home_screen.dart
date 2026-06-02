@@ -53,7 +53,8 @@ class MemberHomeScreen extends StatelessWidget {
                       SizedBox(height: 22.h),
                       _buildSectionHeader(
                         "My Next Workouts",
-                        () => Get.toNamed(AppRoutes.myClassesScreen),
+                        () => Get.toNamed(AppRoutes.myClassesScreen)
+                            ?.then((_) => controller.updateWorkoutImage()),
                       ),
                       SizedBox(height: 16.h),
                       _buildNextWorkoutCard(),
@@ -61,7 +62,8 @@ class MemberHomeScreen extends StatelessWidget {
                       Obx(
                         () => _buildSectionHeader(
                           controller.trainerSectionTitle,
-                          () => Get.toNamed(AppRoutes.trainerListScreen),
+                          () => Get.toNamed(AppRoutes.trainerListScreen)
+                              ?.then((_) => controller.updateWorkoutImage()),
                         ),
                       ),
                       SizedBox(height: 16.h),
@@ -166,7 +168,8 @@ class MemberHomeScreen extends StatelessWidget {
                 // Profile Image
                 GestureDetector(
                   onTap: () {
-                    Get.toNamed(AppRoutes.memberProfileScreen);
+                    Get.toNamed(AppRoutes.memberProfileScreen)
+                        ?.then((_) => controller.updateWorkoutImage());
                   },
                   child: Container(
                     width: 50.w,
@@ -222,7 +225,8 @@ class MemberHomeScreen extends StatelessWidget {
               ],
             ),
             GestureDetector(
-              onTap: () => Get.toNamed(AppRoutes.notificationScreen),
+              onTap: () => Get.toNamed(AppRoutes.notificationScreen)
+                  ?.then((_) => controller.updateWorkoutImage()),
               child: Obx(() {
                 final unreadCount = notificationController.unreadCount.value;
                 return Stack(
@@ -413,7 +417,7 @@ class MemberHomeScreen extends StatelessWidget {
                     bottomRight: Radius.circular(24.r),
                   ),
                   child: Image.asset(
-                    "assets/images/workout.png",
+                    controller.currentWorkoutImage.value,
                     fit: BoxFit.contain,
                     alignment: Alignment.centerRight,
                     errorBuilder: (_, __, ___) => Container(
@@ -553,7 +557,7 @@ class MemberHomeScreen extends StatelessWidget {
               Get.toNamed(
                 AppRoutes.trainerDetailsScreen,
                 arguments: controller.trainerArgs(trainer),
-              );
+              )?.then((_) => controller.updateWorkoutImage());
             },
           );
         }).toList(),

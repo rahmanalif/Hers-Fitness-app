@@ -223,6 +223,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: CustomAppbar(
+                showBack: false,
                 onTap: () => Get.offAllNamed(AppRoutes.memberBottomNavScreen),
                 trailing: GestureDetector(
                   onTap: () => Get.toNamed(AppRoutes.memberAccountSettingsScreen),

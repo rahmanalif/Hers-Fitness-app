@@ -31,6 +31,7 @@ class MemberMyClassesScreen extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: CustomAppbar(
                     title: "My Classes",
+                    showBack: false,
                     onTap: () => Get.offAllNamed(AppRoutes.memberBottomNavScreen),
                   ),
                 ),
