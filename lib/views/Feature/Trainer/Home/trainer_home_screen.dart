@@ -81,24 +81,37 @@ class TrainerHomeScreen extends StatelessWidget {
                               value: statVal('totalClasses'),
                               icon: Icons.calendar_month_rounded,
                               iconColor: const Color(0xFFF7869A),
+                              onTap: () => Get.offAllNamed(
+                                AppRoutes.trainerBottomNavScreen,
+                                arguments: {'initialIndex': 1},
+                              ),
                             ),
                             DashboardStatCard(
                               title: "Total Attendance",
                               value: statVal('totalAttendance'),
                               icon: Icons.people_alt_rounded,
                               iconColor: const Color(0xFF0284C7),
+                              onTap: () => Get.offAllNamed(
+                                AppRoutes.trainerBottomNavScreen,
+                                arguments: {'initialIndex': 2},
+                              ),
                             ),
                             DashboardStatCard(
                               title: "Avg Class Size",
                               value: statVal('avgClassSize', decimals: 1),
                               icon: Icons.trending_up_rounded,
                               iconColor: const Color(0xFF16A34A),
+                              onTap: () => Get.offAllNamed(
+                                AppRoutes.trainerBottomNavScreen,
+                                arguments: {'initialIndex': 1},
+                              ),
                             ),
                             DashboardStatCard(
                               title: "Overall Rating",
                               value: statVal('overallRating', decimals: 1),
                               icon: Icons.star_rounded,
                               iconColor: const Color(0xFFF59E0B),
+                              onTap: () => Get.toNamed(AppRoutes.trainerReviewsScreen),
                             ),
                           ],
                         );

@@ -68,12 +68,16 @@ class _TrainerBottomNavScreenState extends State<TrainerBottomNavScreen> {
       extendBody: false,
       body: _pages[selectedIndex],
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        elevation: 0,
-        backgroundColor: AppColors.actionPrimary,
-        shape: const CircleBorder(),
-        onPressed: () => _onItemTapped(2),
-        child: const Icon(Icons.event_available, color: Colors.white, size: 28),
+      floatingActionButton: SizedBox(
+        width: 66.w,
+        height: 66.w,
+        child: FloatingActionButton(
+          elevation: 0,
+          backgroundColor: AppColors.actionPrimary,
+          shape: const CircleBorder(),
+          onPressed: () => _onItemTapped(2),
+          child: Icon(Icons.event_available, color: Colors.white, size: 38.sp),
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Container(

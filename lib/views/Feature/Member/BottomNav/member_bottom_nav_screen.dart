@@ -74,15 +74,19 @@ class _MemberBottomNavScreenState extends State<MemberBottomNavScreen> {
       extendBody: false,
       body: _pages[selectedIndex],
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        elevation: 0,
-        backgroundColor: AppColors.actionPrimary,
-        shape: const CircleBorder(),
-        onPressed: () => _onItemTapped(2),
-        child: SvgPicture.string(
-          selectedIndex == 2 ? _calendarFilledSvg : _calendarOutlineSvg,
-          width: 28.w,
-          height: 28.w,
+      floatingActionButton: SizedBox(
+        width: 66.w,
+        height: 66.w,
+        child: FloatingActionButton(
+          elevation: 0,
+          backgroundColor: AppColors.actionPrimary,
+          shape: const CircleBorder(),
+          onPressed: () => _onItemTapped(2),
+          child: SvgPicture.string(
+            selectedIndex == 2 ? _calendarFilledSvg : _calendarOutlineSvg,
+            width: 38.w,
+            height: 38.w,
+          ),
         ),
       ),
       bottomNavigationBar: SafeArea(
