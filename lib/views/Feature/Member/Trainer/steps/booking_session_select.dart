@@ -448,7 +448,11 @@ class _CalendarView extends StatelessWidget {
           focusedDay: focusedDate,
           selectedDayPredicate: (day) {
             final dateOnly = DateTime(day.year, day.month, day.day);
-            return selectedSlotDates.contains(dateOnly);
+            final viewedDate = controller.selectedDate.value;
+            final viewedDateOnly =
+                DateTime(viewedDate.year, viewedDate.month, viewedDate.day);
+            return selectedSlotDates.contains(dateOnly) ||
+                dateOnly == viewedDateOnly;
           },
           onDaySelected: (selectedDay, focusedDay) {
             controller.selectDate(selectedDay, focusedDay);
@@ -502,6 +506,10 @@ class _CalendarView extends StatelessWidget {
               return _dateBubble(day.day, Colors.black, Colors.white);
             },
             defaultBuilder: (context, day, focusedDay) {
+              final dateOnly = DateTime(day.year, day.month, day.day);
+              if (selectedSlotDates.contains(dateOnly)) {
+                return _dateBubble(day.day, Colors.black, Colors.white);
+              }
               if (controller.hasBookedSlot(day)) {
                 return _dateBubble(
                   day.day,
@@ -577,14 +585,13 @@ class _TimeSlotsGrid extends StatelessWidget {
 
       final formattedDate = DateFormat('MMMM dd').format(selectedDate);
 
-      // Get ALL slots for the date
+      // Get ALL slots for the date (including unbookable ones)
       final slots = controller.selectedClassSlots.where((slot) {
         final d = DateTime.tryParse(slot.date);
         return d != null &&
             d.year == selectedDate.year &&
             d.month == selectedDate.month &&
-            d.day == selectedDate.day &&
-            slot.isBookable;
+            d.day == selectedDate.day;
       }).toList();
 
       if (slots.isEmpty) {
@@ -658,25 +665,34 @@ class _TimeSlotsGrid extends StatelessWidget {
             itemBuilder: (_, index) {
               final slot = slots[index];
               final isSelected = controller.selectedSlotIds.contains(slot.id);
+              final isBookable = slot.isBookable;
 
               return GestureDetector(
                 onTap: () => controller.selectSlot(slot),
                 child: Container(
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.black : AppColors.bgSecondary,
+                    color: !isBookable
+                        ? AppColors.textDisabled
+                        : isSelected
+                            ? Colors.black
+                            : AppColors.bgSecondary,
                     borderRadius: BorderRadius.circular(12.r),
                     border: Border.all(
-                      color: isSelected
-                          ? Colors.black
-                          : AppColors.borderPrimary,
+                      color: !isBookable
+                          ? AppColors.textDisabled
+                          : isSelected
+                              ? Colors.black
+                              : AppColors.borderPrimary,
                     ),
                   ),
                   child: Text(
                     _slotLabel(slot),
                     textAlign: TextAlign.center,
                     style: AppTextStyles.xs12SemiBold.copyWith(
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                      color: !isBookable || isSelected
+                          ? Colors.white
+                          : AppColors.textPrimary,
                     ),
                   ),
                 ),

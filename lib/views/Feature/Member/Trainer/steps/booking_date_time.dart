@@ -158,6 +158,13 @@ class BookingDateTime extends StatelessWidget {
               );
             },
             defaultBuilder: (context, day, focusedDay) {
+              if (controller.hasSelectedSlot(day)) {
+                return _dateBubble(
+                  day.day,
+                  AppColors.actionSecondary,
+                  AppColors.textInverse,
+                );
+              }
               if (controller.hasBookedSlot(day)) {
                 return _dateBubble(
                   day.day,
@@ -264,6 +271,7 @@ class BookingDateTime extends StatelessWidget {
   Widget _buildTimeSlots() {
     return Obx(() {
       final slots = controller.availableSlots;
+      final filteredSlots = controller.filteredSlots;
 
       if (slots.isEmpty) {
         return Padding(
@@ -292,23 +300,28 @@ class BookingDateTime extends StatelessWidget {
         itemCount: slots.length,
         itemBuilder: (_, index) {
           final time = slots[index];
-          final isSelected = controller.filteredSlots[index].id ==
-              controller.selectedSlot?.id;
+          final slot = filteredSlots[index];
+          final isSelected = slot.id == controller.selectedSlot?.id;
+          final isBookable = slot.isBookable;
+
           return GestureDetector(
             onTap: () => controller.setTimeSlot(index),
             child: Container(
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.actionSecondary
-                    : AppColors.bgTertiary,
+                color: !isBookable
+                    ? AppColors.textDisabled
+                    : isSelected
+                        ? AppColors.actionSecondary
+                        : AppColors.bgTertiary,
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
                 time,
                 style: AppTextStyles.xxs9Medium.copyWith(
-                  color:
-                      isSelected ? AppColors.textInverse : AppColors.textPrimary,
+                  color: !isBookable || isSelected
+                      ? AppColors.textInverse
+                      : AppColors.textPrimary,
                   letterSpacing: 0,
                 ),
               ),

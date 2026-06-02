@@ -323,11 +323,10 @@ class BookTrainerController extends GetxController {
 
   void selectDate(DateTime selectedDay, DateTime focusedDay) {
     if (isMonthlySelection) {
-      selectedDate.value = selectedDay;
-      selectedMonthlyDate.value = selectedDay;
-      focusedDate.value = focusedDay;
-
-      if (hasSelectedSlot(selectedDay)) {
+      final isAlreadyViewed = _sameDate(selectedDate.value.toString(), selectedDay);
+      
+      if (isAlreadyViewed && hasSelectedSlot(selectedDay)) {
+        // Toggling off: Deselect all slots for this date.
         final slotsForDate = selectedClassSlots
             .where((slot) => _sameDate(slot.date, selectedDay))
             .toList();
@@ -335,6 +334,10 @@ class BookTrainerController extends GetxController {
           selectedSlotIds.remove(s.id);
         }
       }
+
+      selectedDate.value = selectedDay;
+      selectedMonthlyDate.value = selectedDay;
+      focusedDate.value = focusedDay;
     } else {
       selectedDate.value = selectedDay;
       focusedDate.value = focusedDay;
