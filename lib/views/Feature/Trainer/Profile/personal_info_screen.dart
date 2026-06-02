@@ -81,7 +81,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   // ── Populate from profile ──────────────────────────────────────────────────
 
   void _populateProfile(UserProfileModel? user) {
-    if (user == null) return;
+    if (user == null || !mounted) return;
     _nameController.text = user.displayName;
     _emailController.text = user.email ?? '';
     _phoneController.text = user.phoneNumber ?? '';

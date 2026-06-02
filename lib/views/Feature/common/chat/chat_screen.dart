@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:fitness/controllers/common/chat_controller.dart';
+import 'package:fitness/Helpers/route.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
 import 'package:fitness/utils/AppTextStyle/app_text_styles.dart';
 import 'package:fitness/views/Base/CustomTextfield/CustomTextfield.dart';
@@ -301,79 +302,150 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
+    final bool isMe = message.isMe;
+
     return Padding(
       padding: EdgeInsets.only(bottom: 14.h),
-      child: Row(
-        mainAxisAlignment: message.isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment:
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          if (!message.isMe) ...[
-            _buildAvatar(widget.contact.avatarUrl, 30.w, false),
-            SizedBox(width: 8.w),
-          ],
-          Flexible(
-            child: Column(
-              crossAxisAlignment: message.isMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(14.r),
-                  decoration: BoxDecoration(
-                    color: message.isMe
-                        ? Colors.black
-                        : const Color(0xFFEBEBEB),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  child:
-                      message.messageType == 'IMAGE' &&
-                          message.attachmentUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8.r),
-                          child: _buildMessageImage(message.attachmentUrl!),
-                        )
-                      : Text(
-                          message.text,
-                          style: AppTextStyles.sm14Medium.copyWith(
-                            color: message.isMe
-                                ? Colors.white
-                                : AppColors.textPrimary,
-                            letterSpacing: 0,
-                          ),
-                        ),
+          // ── Sender Name ─────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: 4.h,
+              left: isMe ? 0 : 46.w,
+              right: isMe ? 46.w : 0,
+            ),
+            child: GestureDetector(
+              onTap: () => _onProfileTap(message),
+              child: Text(
+                isMe ? 'You' : (message.senderName ?? widget.contact.name),
+                style: AppTextStyles.xxs9Bold.copyWith(
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.2,
                 ),
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: 4.h,
-                    right: message.isMe ? 4.w : 0,
-                    left: message.isMe ? 0 : 4.w,
+              ),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isMe) ...[
+                GestureDetector(
+                  onTap: () => _onProfileTap(message),
+                  child: _buildAvatar(
+                    message.senderAvatarUrl ?? widget.contact.avatarUrl,
+                    32.w,
+                    false,
                   ),
-                  child: Text(
-                    message.isMe
-                        ? message.isFailed
-                            ? 'Failed'
-                            : message.isPending
-                            ? '${message.time}  ·  Sending…'
-                            : message.seenAt != null
-                            ? '${message.time}  ·  Seen'
-                            : '${message.time}  ·  Sent'
-                        : message.time,
-                    style: AppTextStyles.xxs9Regular.copyWith(
-                      color: message.isFailed
-                          ? AppColors.statusError
-                          : AppColors.textTertiary,
-                      letterSpacing: 0,
+                ),
+                SizedBox(width: 8.w),
+              ],
+              Flexible(
+                child: Column(
+                  crossAxisAlignment:
+                      isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(14.r),
+                      decoration: BoxDecoration(
+                        color: isMe ? Colors.black : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(16.r),
+                          topRight: Radius.circular(16.r),
+                          bottomLeft: Radius.circular(isMe ? 16.r : 4.r),
+                          bottomRight: Radius.circular(isMe ? 4.r : 16.r),
+                        ),
+                      ),
+                      child: message.messageType == 'IMAGE' &&
+                              message.attachmentUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8.r),
+                              child: _buildMessageImage(message.attachmentUrl!),
+                            )
+                          : Text(
+                              message.text,
+                              style: AppTextStyles.sm14Medium.copyWith(
+                                color: isMe ? Colors.white : AppColors.textPrimary,
+                                letterSpacing: 0,
+                              ),
+                            ),
                     ),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: 4.h,
+                        right: isMe ? 4.w : 0,
+                        left: isMe ? 0 : 4.w,
+                      ),
+                      child: Text(
+                        isMe
+                            ? message.isFailed
+                                ? 'Failed'
+                                : message.isPending
+                                    ? '${message.time}  ·  Sending…'
+                                    : message.seenAt != null
+                                        ? '${message.time}  ·  Seen'
+                                        : '${message.time}  ·  Sent'
+                            : message.time,
+                        style: AppTextStyles.xxs9Regular.copyWith(
+                          color: message.isFailed
+                              ? AppColors.statusError
+                              : AppColors.textTertiary,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isMe) ...[
+                SizedBox(width: 8.w),
+                GestureDetector(
+                  onTap: () => _onProfileTap(message),
+                  child: _buildAvatar(
+                    message.senderAvatarUrl ??
+                        controller.currentUserProfile.value?.imageUrl,
+                    32.w,
+                    false,
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  void _onProfileTap(ChatMessage message) {
+    if (message.isMe) {
+      final isTrainer =
+          controller.currentUserProfile.value?.role?.toLowerCase() == 'trainer';
+      if (isTrainer) {
+        Get.toNamed(AppRoutes.trainerProfileScreen);
+      } else {
+        Get.toNamed(AppRoutes.memberProfileScreen);
+      }
+    } else {
+      final contact = widget.contact;
+      // Use trainerUserId if available, otherwise assume it might be a member
+      if (contact.trainerUserId != null && contact.trainerUserId!.isNotEmpty) {
+        Get.toNamed(
+          AppRoutes.trainerDetailsScreen,
+          arguments: {'trainerId': contact.trainerUserId},
+        );
+      } else if (contact.memberUserId != null &&
+          contact.memberUserId!.isNotEmpty) {
+        // Navigation for member profile - using memberProfileScreen for now
+        // as it's the only member profile related route found.
+        Get.toNamed(
+          AppRoutes.memberProfileScreen,
+          arguments: {'memberId': contact.memberUserId},
+        );
+      }
+    }
   }
 
   Widget _buildMessageInput() {

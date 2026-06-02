@@ -132,7 +132,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       confirmNewPassword: confirmPassword,
     );
 
-    if (!success) return;
+    if (!success || !mounted) return;
 
     _currentPasswordController.clear();
     _newPasswordController.clear();

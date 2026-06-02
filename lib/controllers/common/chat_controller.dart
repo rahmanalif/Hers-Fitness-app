@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/models/chat_models.dart';
+import 'package:fitness/models/user_profile_model.dart';
 import 'package:fitness/services/chat_service.dart';
 import 'package:fitness/services/chat_socket_service.dart';
 import 'package:fitness/services/user_service.dart';
@@ -26,6 +27,8 @@ class ChatMessage {
   final DateTime? seenAt;
   final bool isPending;
   final bool isFailed;
+  final String? senderName;
+  final String? senderAvatarUrl;
 
   const ChatMessage({
     required this.id,
@@ -41,12 +44,29 @@ class ChatMessage {
     this.seenAt,
     this.isPending = false,
     this.isFailed = false,
+    this.senderName,
+    this.senderAvatarUrl,
   });
 
   factory ChatMessage.fromModel(
     ChatMessageModel model, {
     required String? currentUserId,
   }) {
+    // Extract sender info from raw if available
+    final data = model.raw;
+    final sender = data['sender'] ?? data['senderUser'];
+    String? name;
+    String? avatar;
+
+    if (sender is Map) {
+      name = sender['displayName'] ?? sender['name'] ?? sender['fullName'];
+      avatar =
+          sender['profileImageUrl'] ??
+          sender['imageUrl'] ??
+          sender['profile_image_url'] ??
+          sender['avatarUrl'];
+    }
+
     return ChatMessage(
       id: model.id,
       conversationId: model.conversationId,
@@ -59,6 +79,8 @@ class ChatMessage {
       attachmentUrl: model.attachmentUrl,
       attachmentType: model.attachmentType,
       seenAt: model.seenAt,
+      senderName: name,
+      senderAvatarUrl: avatar,
     );
   }
 
@@ -76,6 +98,8 @@ class ChatMessage {
     DateTime? seenAt,
     bool? isPending,
     bool? isFailed,
+    String? senderName,
+    String? senderAvatarUrl,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -91,6 +115,8 @@ class ChatMessage {
       seenAt: seenAt ?? this.seenAt,
       isPending: isPending ?? this.isPending,
       isFailed: isFailed ?? this.isFailed,
+      senderName: senderName ?? this.senderName,
+      senderAvatarUrl: senderAvatarUrl ?? this.senderAvatarUrl,
     );
   }
 }
@@ -203,6 +229,7 @@ class ChatController extends GetxController {
   final conversationsError = ''.obs;
   final searchQuery = ''.obs;
   final composerText = ''.obs;
+  final currentUserProfile = Rxn<UserProfileModel>();
 
   final messageController = TextEditingController();
   final searchController = TextEditingController();
@@ -507,6 +534,8 @@ class ChatController extends GetxController {
       time: _formatMessageTime(now),
       createdAt: now,
       isPending: true,
+      senderName: currentUserProfile.value?.displayName,
+      senderAvatarUrl: currentUserProfile.value?.imageUrl,
     );
 
     messageController.clear();
@@ -1076,10 +1105,10 @@ class ChatController extends GetxController {
 
   Future<void> _loadCurrentUserId() async {
     if (_currentUserId != null) return;
-
     try {
       final user = await _userService.getCurrentUser();
       _currentUserId = user.id;
+      currentUserProfile.value = user;
     } catch (_) {}
   }
 

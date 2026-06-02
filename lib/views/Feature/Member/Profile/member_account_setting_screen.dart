@@ -405,32 +405,36 @@ class _MemberAccountSettingsScreenState
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: const Color(0xFFF1F1F1)),
       ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-        leading: Container(
-          padding: EdgeInsets.all(8.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(color: const Color(0xFFF1F1F1)),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: onTap,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+          leading: Container(
+            padding: EdgeInsets.all(8.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: const Color(0xFFF1F1F1)),
+            ),
+            child: Icon(icon, color: AppColors.textPrimary, size: 22),
           ),
-          child: Icon(icon, color: AppColors.textPrimary, size: 22),
-        ),
-        title: AppText(
-          title,
-          style: AppTextStyles.sm14Medium.copyWith(
+          title: AppText(
+            title,
+            style: AppTextStyles.sm14Medium.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 16,
             color: AppColors.textPrimary,
           ),
-        ),
-        trailing: Icon(
-          Icons.arrow_forward_ios_rounded,
-          size: 16,
-          color: AppColors.textPrimary,
         ),
       ),
     );
@@ -440,35 +444,39 @@ class _MemberAccountSettingsScreenState
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFEF4444),
         borderRadius: BorderRadius.circular(16.r),
       ),
-      child: ListTile(
-        onTap: () => _showDeleteDialog(context),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-        leading: Container(
-          padding: EdgeInsets.all(8.w),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(10.r),
+      child: Material(
+        color: const Color(0xFFEF4444),
+        borderRadius: BorderRadius.circular(16.r),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: () => _showDeleteDialog(context),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+          leading: Container(
+            padding: EdgeInsets.all(8.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: const Icon(
+              Icons.lock_outline_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
-          child: const Icon(
-            Icons.lock_outline_rounded,
+          title: AppText(
+            "Delete Account",
+            style: AppTextStyles.sm14Medium.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          trailing: const Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 16,
             color: Colors.white,
-            size: 22,
           ),
-        ),
-        title: AppText(
-          "Delete Account",
-          style: AppTextStyles.sm14Medium.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios_rounded,
-          size: 16,
-          color: Colors.white,
         ),
       ),
     );

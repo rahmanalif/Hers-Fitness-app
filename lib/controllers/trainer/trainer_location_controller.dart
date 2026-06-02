@@ -30,6 +30,7 @@ class TrainerLocationController extends GetxController {
       await _locationService.setTrainerBaseLocation(
         lat: position.lat,
         lng: position.lng,
+        timezone: DateTime.now().timeZoneName,
       );
       baseLat.value = position.lat;
       baseLng.value = position.lng;
@@ -70,7 +71,11 @@ class TrainerLocationController extends GetxController {
   }) async {
     try {
       isUpdating.value = true;
-      await _locationService.setTrainerBaseLocation(lat: lat, lng: lng);
+      await _locationService.setTrainerBaseLocation(
+        lat: lat,
+        lng: lng,
+        timezone: DateTime.now().timeZoneName,
+      );
       baseLat.value = lat;
       baseLng.value = lng;
       showAppSnackbar(

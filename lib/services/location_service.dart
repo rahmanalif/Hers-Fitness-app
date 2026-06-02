@@ -11,10 +11,15 @@ class LocationService {
   Future<void> setTrainerBaseLocation({
     required double lat,
     required double lng,
+    String? timezone,
   }) async {
     await _apiClient.post(
       ApiEndpoints.trainerBaseLocation,
-      body: {'lat': lat, 'lng': lng},
+      body: {
+        'lat': lat,
+        'lng': lng,
+        if (timezone != null) 'timezone': timezone,
+      },
     );
   }
 

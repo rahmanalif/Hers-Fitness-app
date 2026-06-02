@@ -50,6 +50,7 @@ class AccountSettingsScreen extends StatelessWidget {
                   SizedBox(height: 24.h),
                   _buildSectionTitle("Location"),
                   _buildLiveLocationSwitch(),
+                  _buildBaseLocationItem(),
                   
                   SizedBox(height: 24.h),
                   _buildSectionTitle("Security & Privacy"),
@@ -351,27 +352,31 @@ class AccountSettingsScreen extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: const Color(0xFFF1F1F1)),
       ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-        leading: Container(
-          padding: EdgeInsets.all(8.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(color: const Color(0xFFF1F1F1)),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: onTap,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+          leading: Container(
+            padding: EdgeInsets.all(8.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(color: const Color(0xFFF1F1F1)),
+            ),
+            child: Icon(icon, color: AppColors.textPrimary, size: 22),
           ),
-          child: Icon(icon, color: AppColors.textPrimary, size: 22),
+          title: AppText(
+            title,
+            style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textPrimary),
+          ),
+          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textPrimary),
         ),
-        title: AppText(
-          title,
-          style: AppTextStyles.sm14Medium.copyWith(color: AppColors.textPrimary),
-        ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textPrimary),
       ),
     );
   }
@@ -388,59 +393,135 @@ class AccountSettingsScreen extends StatelessWidget {
       return Container(
         margin: EdgeInsets.only(bottom: 12.h),
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(16.r),
           border: Border.all(color: const Color(0xFFF1F1F1)),
         ),
-        child: ListTile(
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-          leading: Container(
-            padding: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10.r),
-              border: Border.all(color: const Color(0xFFF1F1F1)),
-            ),
-            child: Icon(
-              Icons.my_location_rounded,
-              color: AppColors.textPrimary,
-              size: 22,
-            ),
-          ),
-          title: AppText(
-            "Live location",
-            style: AppTextStyles.sm14Medium.copyWith(
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: Padding(
-            padding: EdgeInsets.only(top: 3.h),
-            child: AppText(
-              locationController.isOnline.value
-                  ? "Members can see your current trainer location"
-                  : "Turn on to show your live trainer location",
-              style: AppTextStyles.xs12Regular.copyWith(
-                color: AppColors.textSecondary,
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.r),
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+            leading: Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: const Color(0xFFF1F1F1)),
+              ),
+              child: Icon(
+                Icons.my_location_rounded,
+                color: AppColors.textPrimary,
+                size: 22,
               ),
             ),
-          ),
-          trailing: isUpdating
-              ? SizedBox(
-                  width: 24.w,
-                  height: 24.w,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.actionPrimary,
-                  ),
-                )
-              : Switch.adaptive(
-                  value: locationController.isOnline.value,
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: AppColors.actionPrimary,
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor: const Color(0xFFD9DDE3),
-                  onChanged: locationController.toggleOnlineStatus,
+            title: AppText(
+              "Live location",
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Padding(
+              padding: EdgeInsets.only(top: 3.h),
+              child: AppText(
+                locationController.isOnline.value
+                    ? "Members can see your current trainer location"
+                    : "Turn on to show your live trainer location",
+                style: AppTextStyles.xs12Regular.copyWith(
+                  color: AppColors.textSecondary,
                 ),
+              ),
+            ),
+            trailing: isUpdating
+                ? SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.actionPrimary,
+                    ),
+                  )
+                : Switch.adaptive(
+                    value: locationController.isOnline.value,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: AppColors.actionPrimary,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: const Color(0xFFD9DDE3),
+                    onChanged: locationController.toggleOnlineStatus,
+                  ),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildBaseLocationItem() {
+    final TrainerLocationController locationController =
+        Get.isRegistered<TrainerLocationController>()
+            ? Get.find<TrainerLocationController>()
+            : Get.put(TrainerLocationController());
+
+    return Obx(() {
+      final isUpdating = locationController.isUpdating.value;
+
+      return Container(
+        margin: EdgeInsets.only(bottom: 12.h),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: const Color(0xFFF1F1F1)),
+        ),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.r),
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            onTap: isUpdating
+                ? null
+                : () => locationController.setCurrentLocationAsBase(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+            leading: Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: const Color(0xFFF1F1F1)),
+              ),
+              child: Icon(
+                Icons.location_on_rounded,
+                color: AppColors.textPrimary,
+                size: 22,
+              ),
+            ),
+            title: AppText(
+              "Base location",
+              style: AppTextStyles.sm14Medium.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Padding(
+              padding: EdgeInsets.only(top: 3.h),
+              child: AppText(
+                "Update your fixed trainer base location",
+                style: AppTextStyles.xs12Regular.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            trailing: isUpdating
+                ? SizedBox(
+                    width: 20.w,
+                    height: 20.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.actionPrimary,
+                    ),
+                  )
+                : Icon(
+                    Icons.refresh_rounded,
+                    size: 20,
+                    color: AppColors.textPrimary,
+                  ),
+          ),
         ),
       );
     });
@@ -450,25 +531,29 @@ class AccountSettingsScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFEF4444),
         borderRadius: BorderRadius.circular(16.r),
       ),
-      child: ListTile(
-        onTap: () => _showDeleteDialog(context),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-        leading: Container(
-          padding: EdgeInsets.all(8.w),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(10.r),
+      child: Material(
+        color: const Color(0xFFEF4444),
+        borderRadius: BorderRadius.circular(16.r),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: () => _showDeleteDialog(context),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+          leading: Container(
+            padding: EdgeInsets.all(8.w),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 22),
           ),
-          child: const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 22),
+          title: AppText(
+            "Delete Account",
+            style: AppTextStyles.sm14Medium.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white),
         ),
-        title: AppText(
-          "Delete Account",
-          style: AppTextStyles.sm14Medium.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white),
       ),
     );
   }
