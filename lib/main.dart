@@ -1,9 +1,11 @@
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'Helpers/route.dart';
+import 'controllers/trainer/trainer_profile_controller.dart';
 import 'services/fcm_service.dart';
 import 'utils/AppConstants/app_constant.dart';
 import 'utils/AppTheme/app_theme.dart';
@@ -23,7 +25,25 @@ void main() async {
     Stripe.publishableKey = AppConstants.Publishable_key.trim();
     await Stripe.instance.applySettings();
   }
+  _initDeepLinks();
   runApp(const MyApp());
+}
+
+void _initDeepLinks() {
+  final appLinks = AppLinks();
+  appLinks.uriLinkStream.listen((uri) {
+    final path = uri.path;
+    if (uri.scheme == 'herfitness' &&
+        (path == '/trainer/payout/return' ||
+            path == '/trainer/payout/refresh')) {
+      if (Get.isRegistered<TrainerProfileController>()) {
+        Get.find<TrainerProfileController>().fetchPayoutStatus();
+      }
+      if (Get.currentRoute != AppRoutes.trainerPayoutScreen) {
+        Get.toNamed(AppRoutes.trainerPayoutScreen);
+      }
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {

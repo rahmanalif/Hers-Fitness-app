@@ -23,6 +23,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
   int selectedMonth = DateTime.now().month;
   String selectedPeriod = "Yearly";
   late final MemberProfileController _profileController;
+  final RxDouble _scrollOffset = 0.0.obs;
 
   @override
   void initState() {
@@ -107,63 +108,88 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: Obx(
-        () => SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildHeader(context, _profileController.profileImageUrl),
-              if (_profileController.isLoading.value)
-                LinearProgressIndicator(color: AppColors.actionPrimary),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
+      body: Stack(
+        children: [
+          NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollUpdateNotification) {
+                _scrollOffset.value = notification.metrics.pixels;
+              }
+              return false;
+            },
+            child: Obx(
+              () => SingleChildScrollView(
                 child: Column(
                   children: [
-                    SizedBox(height: 12.h),
-                    AppText(
-                      _profileController.displayName,
-                      style: AppTextStyles.xl20SemiBold.copyWith(
-                        color: AppColors.textPrimary,
+                    _buildHeader(context, _profileController.profileImageUrl),
+                    if (_profileController.isLoading.value)
+                      LinearProgressIndicator(color: AppColors.actionPrimary),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Column(
+                        children: [
+                          SizedBox(height: 12.h),
+                          AppText(
+                            _profileController.displayName,
+                            style: AppTextStyles.xl20SemiBold.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 18,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(width: 4.w),
+                              AppText(
+                                _profileController.displayLocation,
+                                style: AppTextStyles.sm14Medium.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 24.h),
+
+                          // ── Activity Diagram ──────────────────────────────────
+                          _buildActivityDiagram(context),
+                          SizedBox(height: 32.h),
+
+                          // ── Stats Row ─────────────────────────────────────────
+                          _buildStatsRow(),
+                          SizedBox(height: 24.h),
+
+                          // ── Refer a Friend ────────────────────────────────────
+                          _buildReferFriendButton(),
+
+                          SizedBox(height: 40.h),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 8.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 18,
-                          color: AppColors.textSecondary,
-                        ),
-                        SizedBox(width: 4.w),
-                        AppText(
-                          _profileController.displayLocation,
-                          style: AppTextStyles.sm14Medium.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 24.h),
-
-                    // ── Activity Diagram ──────────────────────────────────
-                    _buildActivityDiagram(context),
-                    SizedBox(height: 32.h),
-
-                    // ── Stats Row ─────────────────────────────────────────
-                    _buildStatsRow(),
-                    SizedBox(height: 24.h),
-
-                    // ── Refer a Friend ────────────────────────────────────
-                    _buildReferFriendButton(),
-
-                    SizedBox(height: 32.h),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+          // Dynamic Status Bar Background
+          Obx(() {
+            final opacity = (_scrollOffset.value / 60).clamp(0.0, 1.0);
+            return Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: MediaQuery.of(context).padding.top,
+                color: AppColors.bgPrimary.withValues(alpha: opacity),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

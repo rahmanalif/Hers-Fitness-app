@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fitness/controllers/common/chat_controller.dart';
 import 'package:fitness/Helpers/route.dart';
 import 'package:fitness/utils/AppColor/app_colors.dart';
@@ -206,29 +206,43 @@ class _ChatScreenState extends State<ChatScreen> {
 
       return ListView.builder(
         controller: _scrollController,
+        reverse: true,
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
         itemCount:
             controller.messages.length +
             (controller.isParticipantTyping.value ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == controller.messages.length) {
+          final isTyping = controller.isParticipantTyping.value;
+          if (isTyping && index == 0) {
             return _TypingIndicator(avatarUrl: widget.contact.avatarUrl);
           }
 
-          final message = controller.messages[index];
-          // Show a day divider whenever the calendar date changes between
-          // consecutive messages (or for the very first message in the list).
-          final showDayDivider = index == 0 ||
+          final msgIndex = controller.messages.length - 1 - (isTyping ? index - 1 : index);
+          final message = controller.messages[msgIndex];
+
+          // ── Grouping Logic ──────────────────────────────────────────
+          final showDayDivider = msgIndex == 0 ||
               !_isSameDay(
-                controller.messages[index].createdAt,
-                controller.messages[index - 1].createdAt,
+                message.createdAt,
+                controller.messages[msgIndex - 1].createdAt,
               );
+
+          final isSameSenderAsPrevious = msgIndex > 0 &&
+              !showDayDivider &&
+              controller.messages[msgIndex - 1].senderUserId == message.senderUserId;
 
           return Column(
             children: [
               if (showDayDivider)
                 _buildTimeDivider(_formatDayLabel(message.createdAt)),
-              _buildMessageBubble(message),
+              _ChatBubble(
+                key: ValueKey(message.id),
+                message: message,
+                isFirstInGroup: !isSameSenderAsPrevious,
+                contact: widget.contact,
+                onProfileTap: () => _onProfileTap(message),
+                onImageTap: (url) => _openImagePreview(url),
+              ),
             ],
           );
         },
@@ -301,128 +315,39 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
-    final bool isMe = message.isMe;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: 14.h),
-      child: Column(
-        crossAxisAlignment:
-            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          // ── Sender Name ─────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.only(
-              bottom: 4.h,
-              left: isMe ? 0 : 46.w,
-              right: isMe ? 46.w : 0,
-            ),
-            child: GestureDetector(
-              onTap: () => _onProfileTap(message),
-              child: Text(
-                isMe ? 'You' : (message.senderName ?? widget.contact.name),
-                style: AppTextStyles.xxs9Bold.copyWith(
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0.2,
-                ),
+  void _openImagePreview(String imageUrl) {
+    Get.to(
+      () => Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: () => Get.back(),
+          ),
+        ),
+        body: Center(
+          child: InteractiveViewer(
+            child: Hero(
+              tag: imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
               ),
             ),
           ),
-          Row(
-            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (!isMe) ...[
-                GestureDetector(
-                  onTap: () => _onProfileTap(message),
-                  child: _buildAvatar(
-                    message.senderAvatarUrl ?? widget.contact.avatarUrl,
-                    32.w,
-                    false,
-                  ),
-                ),
-                SizedBox(width: 8.w),
-              ],
-              Flexible(
-                child: Column(
-                  crossAxisAlignment:
-                      isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(14.r),
-                      decoration: BoxDecoration(
-                        color: isMe ? Colors.black : const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(16.r),
-                          topRight: Radius.circular(16.r),
-                          bottomLeft: Radius.circular(isMe ? 16.r : 4.r),
-                          bottomRight: Radius.circular(isMe ? 4.r : 16.r),
-                        ),
-                      ),
-                      child: message.messageType == 'IMAGE' &&
-                              message.attachmentUrl != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(8.r),
-                              child: _buildMessageImage(message.attachmentUrl!),
-                            )
-                          : Text(
-                              message.text,
-                              style: AppTextStyles.sm14Medium.copyWith(
-                                color: isMe ? Colors.white : AppColors.textPrimary,
-                                letterSpacing: 0,
-                              ),
-                            ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.only(
-                        top: 4.h,
-                        right: isMe ? 4.w : 0,
-                        left: isMe ? 0 : 4.w,
-                      ),
-                      child: Text(
-                        isMe
-                            ? message.isFailed
-                                ? 'Failed'
-                                : message.isPending
-                                    ? '${message.time}  ·  Sending…'
-                                    : message.seenAt != null
-                                        ? '${message.time}  ·  Seen'
-                                        : '${message.time}  ·  Sent'
-                            : message.time,
-                        style: AppTextStyles.xxs9Regular.copyWith(
-                          color: message.isFailed
-                              ? AppColors.statusError
-                              : AppColors.textTertiary,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isMe) ...[
-                SizedBox(width: 8.w),
-                GestureDetector(
-                  onTap: () => _onProfileTap(message),
-                  child: _buildAvatar(
-                    message.senderAvatarUrl ??
-                        controller.currentUserProfile.value?.imageUrl,
-                    32.w,
-                    false,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
+        ),
       ),
+      transition: Transition.fadeIn,
+      fullscreenDialog: true,
     );
   }
 
   void _onProfileTap(ChatMessage message) {
     if (message.isMe) {
       final isTrainer =
-          controller.currentUserProfile.value?.role?.toLowerCase() == 'trainer';
+          Get.find<ChatController>().currentUserProfile.value?.role?.toLowerCase() == 'trainer';
       if (isTrainer) {
         Get.toNamed(AppRoutes.trainerProfileScreen);
       } else {
@@ -438,8 +363,6 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       } else if (contact.memberUserId != null &&
           contact.memberUserId!.isNotEmpty) {
-        // Navigation for member profile - using memberProfileScreen for now
-        // as it's the only member profile related route found.
         Get.toNamed(
           AppRoutes.memberProfileScreen,
           arguments: {'memberId': contact.memberUserId},
@@ -449,6 +372,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageInput() {
+    final controller = Get.find<ChatController>();
     return Container(
       padding: EdgeInsets.only(
         top: 14.h,
@@ -541,52 +465,8 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageImage(String imageUrl) {
-    final isRemote =
-        imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
-
-    if (!isRemote) {
-      return Image.file(File(imageUrl), width: 190.w, fit: BoxFit.cover);
-    }
-
-    return Image.network(
-      imageUrl,
-      width: 190.w,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return SizedBox(
-          width: 190.w,
-          height: 140.h,
-          child: Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-              color: AppColors.actionPrimary,
-              strokeWidth: 2,
-            ),
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return SizedBox(
-          width: 190.w,
-          height: 140.h,
-          child: Center(
-            child: Icon(
-              Icons.broken_image_outlined,
-              color: AppColors.textTertiary,
-              size: 32.sp,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showImageSourceSheet() {
+    final controller = Get.find<ChatController>();
     Get.bottomSheet(
       Container(
         padding: EdgeInsets.fromLTRB(
@@ -632,12 +512,13 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildAvatar(String? avatarUrl, double size, bool isActive) {
     final avatar = avatarUrl != null && avatarUrl.isNotEmpty
         ? ClipOval(
-            child: Image.network(
-              avatarUrl,
+            child: CachedNetworkImage(
+              imageUrl: avatarUrl,
               width: size,
               height: size,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _avatarFallback(size),
+              placeholder: (context, url) => _avatarFallback(size),
+              errorWidget: (context, url, error) => _avatarFallback(size),
             ),
           )
         : _avatarFallback(size);
@@ -677,43 +558,264 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _scrollToBottomIfNeeded() {
+    if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-
-      // messages.clear() (called at the start of fetchMessages to wipe stale
-      // content from the previous conversation) also fires this worker.
-      // If the list is empty there is nothing to scroll to, and — critically —
-      // we must NOT consume _isInitialScroll here; it must stay true so that
-      // the real messages, arriving moments later, still get the initial jump.
+      final controller = Get.find<ChatController>();
       if (controller.messages.isEmpty) return;
 
       final position = _scrollController.position;
-      final distanceFromBottom = position.maxScrollExtent - position.pixels;
+      // In a reversed list, 0.0 is the absolute bottom.
+      final distanceFromBottom = position.pixels;
 
-      // On the very first load the list starts at pixels=0 (top) while
-      // maxScrollExtent is the full content height, so distanceFromBottom is
-      // large. Without the _isInitialScroll bypass the guard below would
-      // treat this as "user scrolled up intentionally" and skip the scroll,
-      // leaving the chat stuck at the oldest message instead of the newest.
       if (_isInitialScroll) {
         _isInitialScroll = false;
-        // jumpTo is more reliable than animateTo here: the list has just been
-        // built and animating from 0 to max can occasionally stutter or land
-        // short on the first frame.
-        _scrollController.jumpTo(position.maxScrollExtent);
+        if (position.pixels != 0.0) {
+          _scrollController.jumpTo(0.0);
+        }
         return;
       }
 
-      // For subsequent incoming messages: only auto-scroll if the user is
-      // already near the bottom (i.e. they haven't scrolled up to read history).
       if (distanceFromBottom > 180 && controller.messages.length > 1) return;
 
-      _scrollController.animateTo(
-        position.maxScrollExtent,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-      );
+      if (position.pixels > 0.0) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      }
     });
+  }
+}
+
+class _ChatBubble extends StatefulWidget {
+  final ChatMessage message;
+  final bool isFirstInGroup;
+  final ChatContact contact;
+  final VoidCallback onProfileTap;
+  final Function(String) onImageTap;
+
+  const _ChatBubble({
+    super.key,
+    required this.message,
+    required this.isFirstInGroup,
+    required this.contact,
+    required this.onProfileTap,
+    required this.onImageTap,
+  });
+
+  @override
+  State<_ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<_ChatBubble> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final bool isMe = widget.message.isMe;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: widget.isFirstInGroup ? 14.h : 4.h),
+      child: Column(
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          if (!isMe && widget.isFirstInGroup)
+            Padding(
+              padding: EdgeInsets.only(bottom: 4.h, left: 46.w),
+              child: GestureDetector(
+                onTap: widget.onProfileTap,
+                child: Text(
+                  widget.message.senderName ?? widget.contact.name,
+                  style: AppTextStyles.xxs9Bold.copyWith(
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          Row(
+            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isMe) ...[
+                if (widget.isFirstInGroup)
+                  GestureDetector(
+                    onTap: widget.onProfileTap,
+                    child: _buildAvatar(
+                      widget.message.senderAvatarUrl ?? widget.contact.avatarUrl,
+                      32.w,
+                    ),
+                  )
+                else
+                  SizedBox(width: 32.w),
+                SizedBox(width: 8.w),
+              ],
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: widget.message.messageType == 'IMAGE' &&
+                              widget.message.attachmentUrl != null
+                          ? () => widget.onImageTap(widget.message.attachmentUrl!)
+                          : null,
+                      child: Container(
+                        padding: EdgeInsets.all(12.r),
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.black : const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(16.r),
+                            topRight: Radius.circular(16.r),
+                            bottomLeft: Radius.circular(isMe ? 16.r : 4.r),
+                            bottomRight: Radius.circular(isMe ? 4.r : 16.r),
+                          ),
+                        ),
+                        child: widget.message.messageType == 'IMAGE' &&
+                                widget.message.attachmentUrl != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8.r),
+                                child: Hero(
+                                  tag: widget.message.attachmentUrl!,
+                                  child: _buildMessageImage(widget.message.attachmentUrl!),
+                                ),
+                              )
+                            : Text(
+                                widget.message.text,
+                                style: AppTextStyles.sm14Medium.copyWith(
+                                  color: isMe ? Colors.white : AppColors.textPrimary,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: 2.h,
+                        right: isMe ? 4.w : 0,
+                        left: isMe ? 0 : 4.w,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.message.time,
+                            style: AppTextStyles.xxs9Regular.copyWith(
+                              color: AppColors.textTertiary,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                          if (isMe) ...[
+                            SizedBox(width: 4.w),
+                            _buildStatusIcon(widget.message),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isMe) SizedBox(width: 4.w),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageImage(String imageUrl) {
+    final isRemote = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+
+    if (!isRemote) {
+      return Image.file(
+        File(imageUrl),
+        width: 190.w,
+        fit: BoxFit.cover,
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      width: 190.w,
+      // Fixed height removed to allow original aspect ratios
+      fit: BoxFit.contain,
+      placeholder: (context, url) => Container(
+        width: 190.w,
+        height: 140.h,
+        color: const Color(0xFFF3F4F6),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.actionPrimary,
+            strokeWidth: 2,
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        width: 190.w,
+        height: 140.h,
+        color: const Color(0xFFF3F4F6),
+        child: Center(
+          child: Icon(Icons.broken_image_outlined, color: AppColors.textTertiary, size: 32.sp),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusIcon(ChatMessage message) {
+    if (message.isFailed) {
+      return Icon(Icons.error_outline, color: AppColors.statusError, size: 12.sp);
+    }
+    if (message.isPending) {
+      return SizedBox(
+        width: 10.w,
+        height: 10.w,
+        child: CircularProgressIndicator(
+          strokeWidth: 1.5,
+          color: AppColors.textTertiary,
+        ),
+      );
+    }
+    if (message.seenAt != null) {
+      return Stack(
+        children: [
+          Icon(Icons.check, color: AppColors.actionPrimary, size: 12.sp),
+          Positioned(
+            left: 3.w,
+            child: Icon(Icons.check, color: AppColors.actionPrimary, size: 12.sp),
+          ),
+        ],
+      );
+    }
+    return Icon(Icons.check, color: AppColors.textTertiary, size: 12.sp);
+  }
+
+  Widget _buildAvatar(String? avatarUrl, double size) {
+    final avatar = avatarUrl != null && avatarUrl.isNotEmpty
+        ? ClipOval(
+            child: CachedNetworkImage(
+              imageUrl: avatarUrl,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => _avatarFallback(size),
+              errorWidget: (context, url, error) => _avatarFallback(size),
+            ),
+          )
+        : _avatarFallback(size);
+
+    return avatar;
+  }
+
+  Widget _avatarFallback(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: Colors.grey[300], shape: BoxShape.circle),
+      child: Icon(Icons.person, color: Colors.grey[600], size: 20.sp),
+    );
   }
 }
 

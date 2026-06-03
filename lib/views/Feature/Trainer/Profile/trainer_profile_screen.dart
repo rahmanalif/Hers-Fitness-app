@@ -25,6 +25,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   String selectedPeriod = "Monthly"; // default matches API default
 
   late final TrainerProfileController _ctrl;
+  final RxDouble _scrollOffset = 0.0.obs;
 
   @override
   void initState() {
@@ -92,85 +93,112 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: Obx(
-        () => RefreshIndicator(
-          color: AppColors.actionPrimary,
-          onRefresh: () async {
-            await Future.wait([
-              _ctrl.fetchProfile(showError: true),
-              _ctrl.fetchDashboardStats(showError: true),
-              _ctrl.fetchEarnings(
-                period: selectedPeriod.toLowerCase(),
-                year: selectedPeriod == 'Monthly' ? selectedYear : null,
-              ),
-              _ctrl.fetchTopClasses(showError: true),
-            ]);
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              children: [
-                _buildHeader(context),
-                if (_ctrl.isLoading.value)
-                  LinearProgressIndicator(color: AppColors.actionPrimary),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+      body: Stack(
+        children: [
+          NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollUpdateNotification) {
+                _scrollOffset.value = notification.metrics.pixels;
+              }
+              return false;
+            },
+            child: Obx(
+              () => RefreshIndicator(
+                color: AppColors.actionPrimary,
+                onRefresh: () async {
+                  await Future.wait([
+                    _ctrl.fetchProfile(showError: true),
+                    _ctrl.fetchDashboardStats(showError: true),
+                    _ctrl.fetchEarnings(
+                      period: selectedPeriod.toLowerCase(),
+                      year: selectedPeriod == 'Monthly' ? selectedYear : null,
+                    ),
+                    _ctrl.fetchTopClasses(showError: true),
+                  ]);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
                     children: [
-                      SizedBox(height: 12.h),
-                      // Name
-                      AppText(
-                        _ctrl.displayName,
-                        style: AppTextStyles.xl20SemiBold
-                            .copyWith(color: AppColors.textPrimary),
-                      ),
-                      SizedBox(height: 8.h),
-                      // Location
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.location_on_outlined,
-                              size: 18, color: AppColors.textSecondary),
-                          SizedBox(width: 4.w),
-                          AppText(
-                            _ctrl.displayLocation,
-                            style: AppTextStyles.sm14Medium.copyWith(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w400,
+                      _buildHeader(context),
+                      if (_ctrl.isLoading.value)
+                        LinearProgressIndicator(color: AppColors.actionPrimary),
+                      if (!_ctrl.payoutReady)
+                        _PayoutBanner(onTap: () => Get.toNamed(AppRoutes.trainerPayoutScreen)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: Column(
+                          children: [
+                            SizedBox(height: 12.h),
+                            // Name
+                            AppText(
+                              _ctrl.displayName,
+                              style: AppTextStyles.xl20SemiBold
+                                  .copyWith(color: AppColors.textPrimary),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: 8.h),
+                            // Location
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.location_on_outlined,
+                                    size: 18, color: AppColors.textSecondary),
+                                SizedBox(width: 4.w),
+                                AppText(
+                                  _ctrl.displayLocation,
+                                  style: AppTextStyles.sm14Medium.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 24.h),
+
+                            // ── Stats Grid ──────────────────────────────────────
+                            _buildStatsGrid(),
+                            SizedBox(height: 24.h),
+
+                            // ── Earnings Overview ───────────────────────────────
+                            _buildEarningsOverview(context),
+                            SizedBox(height: 32.h),
+
+                            // ── Top Performing Classes ──────────────────────────
+                            Row(
+                              children: [
+                                AppText(
+                                  "Top Performing Classes",
+                                  style: AppTextStyles.base16SemiBold
+                                      .copyWith(color: AppColors.textPrimary),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16.h),
+                            _buildTopClasses(),
+                            SizedBox(height: 40.h),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 24.h),
-
-                      // ── Stats Grid ──────────────────────────────────────
-                      _buildStatsGrid(),
-                      SizedBox(height: 24.h),
-
-                      // ── Earnings Overview ───────────────────────────────
-                      _buildEarningsOverview(context),
-                      SizedBox(height: 32.h),
-
-                      // ── Top Performing Classes ──────────────────────────
-                      Row(
-                        children: [
-                          AppText(
-                            "Top Performing Classes",
-                            style: AppTextStyles.base16SemiBold
-                                .copyWith(color: AppColors.textPrimary),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16.h),
-                      _buildTopClasses(),
-                      SizedBox(height: 32.h),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          // Dynamic Status Bar Background
+          Obx(() {
+            final opacity = (_scrollOffset.value / 60).clamp(0.0, 1.0);
+            return Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: MediaQuery.of(context).padding.top,
+                color: AppColors.bgPrimary.withValues(alpha: opacity),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -271,7 +299,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     );
   }
 
-  // ── Stats Grid ──────────────────────────────────────────────────��─────────
+  // ── Stats Grid ────────────────────────────────────────────────────────────
 
   Widget _buildStatsGrid() {
     return Obx(() {
@@ -789,6 +817,47 @@ class _DashedGridLine extends StatelessWidget {
       height: 1.h,
       child: CustomPaint(
         painter: _DashedLinePainter(color: Colors.grey.shade300),
+      ),
+    );
+  }
+}
+
+// ─── Payout Banner ─────────────────────────────────────────────────────────────
+
+class _PayoutBanner extends StatelessWidget {
+  const _PayoutBanner({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 0),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: AppColors.statusWarningSubtle,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: AppColors.statusWarning.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: AppColors.statusWarning, size: 20),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: AppText(
+                'Set up payouts to accept bookings',
+                style: AppTextStyles.sm14Medium.copyWith(
+                  color: AppColors.statusWarning,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: AppColors.statusWarning, size: 20),
+          ],
+        ),
       ),
     );
   }

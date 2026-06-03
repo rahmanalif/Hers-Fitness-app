@@ -47,6 +47,7 @@ import '../views/Feature/common/terms_of_service_screen.dart';
 import '../views/Feature/common/about_us_screen.dart';
 import '../views/Feature/common/help_center_screen.dart';
 import '../views/Feature/common/identity_verification/identity_verification_screen.dart';
+import '../views/Feature/Trainer/Payout/trainer_payout_screen.dart';
 
 class AppRoutes {
   static String splashScreen = "/splash_screen";
@@ -93,6 +94,7 @@ class AppRoutes {
   static String memberPersonalInfoScreen = "/member_personal_info_screen";
   static String memberTransactionsScreen = "/member_transactions_screen";
   static String trainerTransactionsScreen = "/trainer_transactions_screen";
+  static String trainerPayoutScreen = "/trainer_payout_screen";
   static String verifyIdentityScreen = "/verify_identity_screen";
   static String identityDocumentTypeScreen = "/identity_document_type_screen";
   static String identityCameraScreen = "/identity_camera_screen";
@@ -248,6 +250,10 @@ class AppRoutes {
     GetPage(
       name: trainerTransactionsScreen,
       page: () => const TrainerTransactionsScreen(),
+    ),
+    GetPage(
+      name: trainerPayoutScreen,
+      page: () => const TrainerPayoutScreen(),
     ),
     GetPage(
       name: verifyIdentityScreen,

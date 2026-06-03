@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:fitness/core/network/api_client.dart';
 import 'package:fitness/core/storage/local_storage.dart';
+import 'package:fitness/models/payout_status_model.dart';
 import 'package:fitness/models/trainer_earnings_model.dart';
 import 'package:fitness/models/trainer_top_class_model.dart';
 import 'package:fitness/models/user_profile_model.dart';
@@ -41,6 +42,10 @@ class TrainerProfileController extends GetxController {
   final topClasses = RxList<TrainerTopClassModel>();
   final isLoadingTopClasses = false.obs;
 
+  // ── Payout (Stripe Connect) ───────────────────────────────────────────────
+  final isLoadingPayout = false.obs;
+  final isGeneratingOnboardingLink = false.obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -52,6 +57,8 @@ class TrainerProfileController extends GetxController {
   }
 
   // ── Computed getters ─────────────────────────────────────────────────────
+
+  bool get payoutReady => user.value?.payoutReady ?? false;
 
   String get displayName => user.value?.displayName ?? 'Trainer';
   String get displayLocation => user.value?.displayLocation ?? 'Location not added';
@@ -258,6 +265,14 @@ class TrainerProfileController extends GetxController {
           sessionFormat: user.value?.sessionFormat,
           baseLocationLat: user.value?.baseLocationLat,
           baseLocationLng: user.value?.baseLocationLng,
+          stripeConnectAccountId: user.value?.stripeConnectAccountId,
+          stripeConnectOnboardingComplete:
+              user.value?.stripeConnectOnboardingComplete,
+          stripeChargesEnabled: user.value?.stripeChargesEnabled,
+          stripePayoutsEnabled: user.value?.stripePayoutsEnabled,
+          stripeDetailsSubmitted: user.value?.stripeDetailsSubmitted,
+          stripeConnectUpdatedAt: user.value?.stripeConnectUpdatedAt,
+          payoutReady: user.value?.payoutReady,
         );
       }
       showAppSnackbar(
@@ -276,6 +291,80 @@ class TrainerProfileController extends GetxController {
       isUploadingImage.value = false;
     }
     return false;
+  }
+
+  // ── Payout ────────────────────────────────────────────────────────────────
+
+  /// Fetches live payout status from Stripe and updates [user].
+  Future<void> fetchPayoutStatus() async {
+    try {
+      isLoadingPayout.value = true;
+      final status = await _userService.getTrainerPayoutStatus();
+      final current = user.value;
+      if (current != null) {
+        user.value = UserProfileModel(
+          id: current.id,
+          trainerUserId: current.trainerUserId,
+          firstName: current.firstName,
+          lastName: current.lastName,
+          fullName: current.fullName,
+          email: current.email,
+          phoneNumber: current.phoneNumber,
+          gender: current.gender,
+          role: current.role,
+          imageUrl: current.imageUrl,
+          state: current.state,
+          location: current.location,
+          bio: current.bio,
+          accountStatus: current.accountStatus,
+          age: current.age,
+          weight: current.weight,
+          weightUnit: current.weightUnit,
+          dietPreference: current.dietPreference,
+          coverPhotoUrl: current.coverPhotoUrl,
+          fitnessClasses: current.fitnessClasses,
+          instructorDuration: current.instructorDuration,
+          certifications: current.certifications,
+          sessionFormat: current.sessionFormat,
+          baseLocationLat: current.baseLocationLat,
+          baseLocationLng: current.baseLocationLng,
+          stripeConnectAccountId: status.stripeConnectAccountId,
+          stripeConnectOnboardingComplete: status.onboardingComplete,
+          stripeChargesEnabled: status.chargesEnabled,
+          stripePayoutsEnabled: status.payoutsEnabled,
+          stripeDetailsSubmitted: status.detailsSubmitted,
+          stripeConnectUpdatedAt: status.updatedAt,
+          payoutReady: status.payoutReady,
+        );
+      }
+    } on ApiException catch (error) {
+      showAppSnackbar('Payout status failed', error.message,
+          snackPosition: SnackPosition.BOTTOM);
+    } catch (_) {
+      showAppSnackbar('Payout status failed', 'Could not refresh payout status.',
+          snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      isLoadingPayout.value = false;
+    }
+  }
+
+  /// Calls the backend to generate a Stripe Connect onboarding URL.
+  /// Returns the URL string on success, null on failure.
+  Future<PayoutStatusModel?> generateOnboardingLink() async {
+    try {
+      isGeneratingOnboardingLink.value = true;
+      return await _userService.generateTrainerOnboardingLink();
+    } on ApiException catch (error) {
+      showAppSnackbar('Setup failed', error.message,
+          snackPosition: SnackPosition.BOTTOM);
+      return null;
+    } catch (_) {
+      showAppSnackbar('Setup failed', 'Could not start payout setup.',
+          snackPosition: SnackPosition.BOTTOM);
+      return null;
+    } finally {
+      isGeneratingOnboardingLink.value = false;
+    }
   }
 
   // ── Delete account ────────────────────────────────────────────────────────

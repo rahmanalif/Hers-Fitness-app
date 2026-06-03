@@ -106,17 +106,33 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                             padding: EdgeInsets.symmetric(horizontal: 20.w),
                             children: [
                               SizedBox(height: 120.h),
-                              Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                color: AppColors.textSecondary,
-                                size: 44.sp,
+                              Container(
+                                width: 80.w,
+                                height: 80.w,
+                                decoration: BoxDecoration(
+                                  color: AppColors.bgTertiary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  color: AppColors.textTertiary,
+                                  size: 36.sp,
+                                ),
                               ),
-                              SizedBox(height: 12.h),
+                              SizedBox(height: 20.h),
                               Text(
                                 'No conversations yet.',
                                 textAlign: TextAlign.center,
-                                style: AppTextStyles.sm14Medium.copyWith(
-                                  color: AppColors.textSecondary,
+                                style: AppTextStyles.base16Medium.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(height: 8.h),
+                              Text(
+                                'Your messages with trainers and members will appear here.',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.sm14Regular.copyWith(
+                                  color: AppColors.textTertiary,
                                 ),
                               ),
                             ],
@@ -137,7 +153,22 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
                           itemCount: contacts.length,
                           itemBuilder: (context, index) {
                             final contact = contacts[index];
-                            return _buildContactItem(contact, controller);
+                            return Dismissible(
+                              key: Key(contact.id),
+                              direction: DismissDirection.endToStart,
+                              onDismissed: (_) => controller.contacts.removeAt(index),
+                              background: Container(
+                                margin: EdgeInsets.only(bottom: 10.h),
+                                padding: EdgeInsets.only(right: 20.w),
+                                alignment: Alignment.centerRight,
+                                decoration: BoxDecoration(
+                                  color: AppColors.statusError,
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Icon(Icons.delete_outline, color: Colors.white, size: 28.sp),
+                              ),
+                              child: _buildContactItem(contact, controller),
+                            );
                           },
                         ),
                       );

@@ -72,6 +72,11 @@ class ApiEndpoints {
   static const trainerTransactions = '/api/users/trainer/transactions';
   static const trainerAccount = '/api/users/trainer/account';
 
+  // ── Trainer payout (Stripe Connect) ───────────────────────────────────────
+  static const trainerPayoutStatus = '/api/users/trainer/payout/status';
+  static const trainerPayoutOnboardingLink =
+      '/api/users/trainer/payout/onboarding-link';
+
   // ── Notification preferences ──────────────────────────────────────────────
   static const notificationPreferences = '/api/notifications/preferences';
 

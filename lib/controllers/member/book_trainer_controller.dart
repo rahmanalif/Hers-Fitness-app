@@ -471,11 +471,19 @@ class BookTrainerController extends GetxController {
       _startHoldTimer(hold.reservedUntil);
       return true;
     } on ApiException catch (error) {
-      showAppSnackbar(
-        'Booking hold failed',
-        error.message,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      if (_isTrainerPayoutNotReady(error)) {
+        showAppSnackbar(
+          'Trainer unavailable',
+          'This trainer is not currently accepting payments. Please try another trainer.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      } else {
+        showAppSnackbar(
+          'Booking hold failed',
+          error.message,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
       return false;
     } catch (_) {
       showAppSnackbar(
@@ -487,6 +495,16 @@ class BookTrainerController extends GetxController {
     } finally {
       isSubmitting.value = false;
     }
+  }
+
+  bool _isTrainerPayoutNotReady(ApiException error) {
+    final data = error.data;
+    if (data is Map<String, dynamic>) {
+      return data['code'] == 'TRAINER_PAYOUT_NOT_READY' ||
+          (data['data'] is Map &&
+              (data['data'] as Map)['code'] == 'TRAINER_PAYOUT_NOT_READY');
+    }
+    return false;
   }
 
   Future<bool> payWithStripe() async {

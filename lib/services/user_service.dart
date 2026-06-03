@@ -7,6 +7,7 @@ import 'package:fitness/models/referral_model.dart';
 import 'package:fitness/models/static_content_model.dart';
 import 'package:fitness/models/trainer_transaction_model.dart';
 import 'package:fitness/models/transaction_model.dart';
+import 'package:fitness/models/payout_status_model.dart';
 import 'package:fitness/models/user_profile_model.dart';
 import 'package:http/http.dart' as http;
 
@@ -272,6 +273,24 @@ class UserService {
   /// DELETE /api/users/trainer/account
   Future<void> deleteTrainerAccount() async {
     await _apiClient.delete(ApiEndpoints.trainerAccount);
+  }
+
+  /// GET /api/users/trainer/payout/status
+  Future<PayoutStatusModel> getTrainerPayoutStatus() async {
+    final response = await _apiClient.get(ApiEndpoints.trainerPayoutStatus);
+    return PayoutStatusModel.fromJson(_asMap(response));
+  }
+
+  /// POST /api/users/trainer/payout/onboarding-link
+  Future<PayoutStatusModel> generateTrainerOnboardingLink({
+    String returnUrl = 'https://hersfitness.okaybro.online/trainer/payout/return',
+    String refreshUrl = 'https://hersfitness.okaybro.online/trainer/payout/refresh',
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.trainerPayoutOnboardingLink,
+      body: {'returnUrl': returnUrl, 'refreshUrl': refreshUrl},
+    );
+    return PayoutStatusModel.fromJson(_asMap(response));
   }
 
   Future<StaticContentModel> getStaticContent(String key) async {

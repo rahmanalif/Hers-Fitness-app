@@ -8,7 +8,11 @@
       "Bash(Select-Object -First 30 FullName)",
       "Bash(find c:\\\\\\\\dev\\\\\\\\HerFitness\\\\\\\\lib -type d)",
       "Bash(grep -E \"\\\\.dart$\")",
-      "Bash(Select-String -Path \"c:\\\\dev\\\\HerFitness\\\\pubspec.yaml\" -Pattern \"share|flutter_sharing|url_launcher\")"
+      "Bash(Select-String -Path \"c:\\\\dev\\\\HerFitness\\\\pubspec.yaml\" -Pattern \"share|flutter_sharing|url_launcher\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\dev\\\\HerFitness\" -Recurse -Depth 2)",
+      "Bash(Select-Object -First 50)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\dev\\\\HerFitness\\\\lib\" -Recurse | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\('c:\\\\dev\\\\HerFitness\\\\', ''\\) })",
+      "Bash(flutter pub *)"
     ]
   }
 }

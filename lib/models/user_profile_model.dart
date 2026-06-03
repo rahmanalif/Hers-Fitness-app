@@ -30,6 +30,15 @@ class UserProfileModel {
   final double? baseLocationLat;
   final double? baseLocationLng;
 
+  // ── Trainer payout (Stripe Connect) ──────────────────────────────────────
+  final String? stripeConnectAccountId;
+  final bool? stripeConnectOnboardingComplete;
+  final bool? stripeChargesEnabled;
+  final bool? stripePayoutsEnabled;
+  final bool? stripeDetailsSubmitted;
+  final String? stripeConnectUpdatedAt;
+  final bool? payoutReady;
+
   const UserProfileModel({
     this.id,
     this.trainerUserId,
@@ -56,6 +65,13 @@ class UserProfileModel {
     this.sessionFormat,
     this.baseLocationLat,
     this.baseLocationLng,
+    this.stripeConnectAccountId,
+    this.stripeConnectOnboardingComplete,
+    this.stripeChargesEnabled,
+    this.stripePayoutsEnabled,
+    this.stripeDetailsSubmitted,
+    this.stripeConnectUpdatedAt,
+    this.payoutReady,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -165,6 +181,34 @@ class UserProfileModel {
       baseLocationLng:
           _readDouble(source, const ['baseLocationLng', 'base_location_lng', 'baseLongitude', 'base_longitude']) ??
           _readDouble(profile, const ['baseLocationLng', 'base_location_lng', 'baseLongitude', 'base_longitude']),
+      stripeConnectAccountId: _readString(
+        source,
+        const ['stripeConnectAccountId', 'stripe_connect_account_id'],
+      ),
+      stripeConnectOnboardingComplete: _readBool(
+        source,
+        const [
+          'stripeConnectOnboardingComplete',
+          'stripe_connect_onboarding_complete',
+        ],
+      ),
+      stripeChargesEnabled: _readBool(
+        source,
+        const ['stripeChargesEnabled', 'stripe_charges_enabled'],
+      ),
+      stripePayoutsEnabled: _readBool(
+        source,
+        const ['stripePayoutsEnabled', 'stripe_payouts_enabled'],
+      ),
+      stripeDetailsSubmitted: _readBool(
+        source,
+        const ['stripeDetailsSubmitted', 'stripe_details_submitted'],
+      ),
+      stripeConnectUpdatedAt: _readString(
+        source,
+        const ['stripeConnectUpdatedAt', 'stripe_connect_updated_at'],
+      ),
+      payoutReady: _readBool(source, const ['payoutReady', 'payout_ready']),
     );
   }
 
@@ -309,6 +353,18 @@ class UserProfileModel {
     final value = _readString(json, keys);
     if (value == null) return null;
     return double.tryParse(value);
+  }
+
+  static bool? _readBool(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is bool) return value;
+      if (value is String) {
+        if (value.toLowerCase() == 'true') return true;
+        if (value.toLowerCase() == 'false') return false;
+      }
+    }
+    return null;
   }
 
   static String? _normalizeCoverUrl(String? url) {

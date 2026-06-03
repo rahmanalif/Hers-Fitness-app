@@ -3,6 +3,7 @@ import 'package:fitness/models/app_notification_model.dart';
 import 'package:fitness/services/fcm_service.dart';
 import 'package:fitness/services/notification_service.dart';
 import 'package:fitness/utils/app_snackbar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 class MemberNotificationController extends GetxController {
@@ -46,8 +47,12 @@ class MemberNotificationController extends GetxController {
     try {
       final response = await _notificationService.getUnreadCount();
       unreadCount.value = response.unreadCount;
-    } catch (_) {
+    } on ApiException catch (e) {
       unreadCount.value = 0;
+      debugPrint('Unread count API error: ${e.message}');
+    } catch (e) {
+      unreadCount.value = 0;
+      debugPrint('Unread count error: $e');
     }
   }
 
@@ -80,7 +85,7 @@ class MemberNotificationController extends GetxController {
   }
 
   Future<void> markAllAsRead() async {
-    if (isMarkingAllRead.value || unreadCount.value == 0) return;
+    if (isMarkingAllRead.value) return;
 
     try {
       isMarkingAllRead.value = true;
@@ -120,7 +125,7 @@ class MemberNotificationController extends GetxController {
   }
 
   Future<void> deleteAllNotifications() async {
-    if (isDeletingAll.value || notifications.isEmpty) return;
+    if (isDeletingAll.value) return;
 
     try {
       isDeletingAll.value = true;
